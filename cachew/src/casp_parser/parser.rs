@@ -54,9 +54,6 @@ fn parse_ranged_keys(query_keys: &str) -> Result<Vec<&str>, String> {
 /// Else, a vector containing the keys.
 fn parse_many_keys(query_keys: &str) -> Result<Vec<&str>, String> {    
     let tokens: Vec<&str> = split_whitespaces(query_keys);
-    if tokens.len() < 2 {
-        return Err(format!("invalidKeyAmount: Expected more than two keys got {}", tokens.len()));
-    }
 
     Ok(tokens)
 }
@@ -236,14 +233,8 @@ mod tests {
 
     #[test]
     fn test_parse_many_keys() {
-        let range_keys = parse_many_keys("key0 key1 key2");
-        assert_eq!(range_keys, Ok(vec!["key0", "key1", "key2"]))
-    }
-
-    #[test]
-    fn test_parse_many_keys_fail() {
-        let range_keys = parse_many_keys("key0");
-        assert_eq!(range_keys, Err("invalidKeyAmount: Expected more than two keys got 1".to_owned()))
+        let range_keys = parse_many_keys("key0 key1 02=2?%3");
+        assert_eq!(range_keys, Ok(vec!["key0", "key1", "02=2?%3"]))
     }
 
     // Unit tests for the `parse_del` function:
