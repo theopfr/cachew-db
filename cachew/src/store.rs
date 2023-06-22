@@ -1,32 +1,10 @@
 use std::collections::BTreeMap;
-use serde::{Serialize, Deserialize};
 use bincode::{serialize, deserialize};
 use std::ops::Bound::Included;
 
-use crate::casp_parser::parser;
-
-#[derive(Debug, Serialize, Deserialize, PartialEq)]
-pub enum ValueType {
-    Str(String),
-    Int(i32),
-    Float(f32),
-    IntList(Vec<i32>),
-    StrList(Vec<String>)
-}
-
-
-#[derive(Debug, PartialEq)]
-pub enum QueryResponse {
-    GET_OK(ValueType),
-    GET_RANGE_OK(Vec<ValueType>),
-    GET_MANY_OK(Vec<ValueType>),
-    DEL_OK,
-    DEL_RANGE_OK,
-    DEL_MANY_OK,
-    SET_OK,
-    SET_MANY_OK,
-    ERROR(String)
-}
+use crate::schemas::{QueryResponse, ValueType, KeyValuePair};
+use crate::{database_error};
+use crate::errors::database_errors::{ DatabaseErrorType};
 
 /// Gets a value by its key.
 /// 
@@ -42,7 +20,7 @@ pub fn get(store: &mut BTreeMap<String, Vec<u8>>, key: &str) -> Result<QueryResp
         return Ok(QueryResponse::GET_OK(deserialized_value));
     }
 
-    Err(format!("keyNotFound: Couldn't find key '{}'.", key))
+    database_error!(DatabaseErrorType::KeyNotFound(key.to_string()))
 }
 
 /// Gets values from a range of keys.
@@ -56,7 +34,7 @@ pub fn get(store: &mut BTreeMap<String, Vec<u8>>, key: &str) -> Result<QueryResp
 /// Either the queried values in a GET_RANGE_OK enum or an error.
 pub fn get_range(store: &mut BTreeMap<String, Vec<u8>>, key_lower: String, key_upper: String) -> Result<QueryResponse, String> {
     if key_lower > key_upper {
-        return Err("invalidRange: Lower key is bigger than upper key.".to_owned());
+        return database_error!(DatabaseErrorType::InvalidRangeOrder);
     }
 
     let mut values: Vec<ValueType> = Vec::new();
@@ -84,7 +62,7 @@ pub fn get_many(store: &mut BTreeMap<String, Vec<u8>>, keys: Vec<&str>) -> Resul
             values.push(deserialized_value);
         }
         else {
-            return Err(format!("keyNotFound: Couldn't find key '{}'.", key));
+            return database_error!(DatabaseErrorType::KeyNotFound(key.to_string()));
         }
     }
 
@@ -115,7 +93,7 @@ pub fn del(store: &mut BTreeMap<String, Vec<u8>>, key: &str) -> Result<QueryResp
 /// Either a DEL_RANGE_OK enum on deletion or an error.
 pub fn del_range(store: &mut BTreeMap<String, Vec<u8>>, key_lower: String, key_upper: String) -> Result<QueryResponse, String> {
     if key_lower > key_upper {
-        return Err("invalidRange: Lower key is bigger than upper key.".to_owned());
+        return database_error!(DatabaseErrorType::InvalidRangeOrder);
     }
 
     let keys_to_remove: Vec<String> = store
@@ -166,7 +144,7 @@ pub fn set(store: &mut BTreeMap<String, Vec<u8>>, key: &str, value: ValueType) -
 /// 
 /// # Returns:
 /// A SET_OK enum.
-pub fn set_many(store: &mut BTreeMap<String, Vec<u8>>, key_value_pairs: Vec<parser::KeyValuePair>) -> Result<QueryResponse, String> {
+pub fn set_many(store: &mut BTreeMap<String, Vec<u8>>, key_value_pairs: Vec<KeyValuePair>) -> Result<QueryResponse, String> {
     for pair in key_value_pairs {
         store.insert(pair.key.to_owned(), serialize(&ValueType::Str(pair.value)).unwrap());
     }
@@ -196,7 +174,7 @@ mod tests {
         let _ = store::set(&mut store, "key0", store::ValueType::Str("val0".to_owned()));
         let response = store::get(&mut store, "key2");
 
-        assert_eq!(response, Err("keyNotFound: Couldn't find key 'key2'.".to_owned()));
+        assert_eq!(response, database_error!(DatabaseErrorType::KeyNotFound("key2".to_string())));
     }
 
     #[test]
@@ -223,7 +201,7 @@ mod tests {
         }
         let response = store::get_many(&mut store, vec!["key4", "key5"]);
 
-        assert_eq!(response, Err("keyNotFound: Couldn't find key 'key5'.".to_owned()));
+        assert_eq!(response, database_error!(DatabaseErrorType::KeyNotFound("key5".to_string())));
     }
 
     #[test]
@@ -249,7 +227,7 @@ mod tests {
         }
         let response = store::get_range(&mut store, "key5".to_owned(), "key2".to_owned());
 
-        assert_eq!(response, Err("invalidRange: Lower key is bigger than upper key.".to_owned()));
+        assert_eq!(response, database_error!(DatabaseErrorType::InvalidRangeOrder));
     }
 
     #[test]
@@ -268,7 +246,7 @@ mod tests {
         let _ = store::del(&mut store, "key");
 
         let response = store::get(&mut store, "key");
-        assert_eq!(response, Err("keyNotFound: Couldn't find key 'key'.".to_owned()));
+        assert_eq!(response, database_error!(DatabaseErrorType::KeyNotFound("key".to_string())));
     }
     
     #[test]
@@ -280,7 +258,7 @@ mod tests {
         let _ = store::del_range(&mut store, "key2".to_owned(), "key5".to_owned());
         let response = store::get(&mut store, "key3");
 
-        assert_eq!(response, Err("keyNotFound: Couldn't find key 'key3'.".to_owned()));
+        assert_eq!(response, database_error!(DatabaseErrorType::KeyNotFound("key3".to_string())));
     }
 
     #[test]
@@ -292,7 +270,7 @@ mod tests {
         let _ = store::del_many(&mut store, vec!["key1", "key4"]);
         let response = store::get(&mut store, "key1");
 
-        assert_eq!(response, Err("keyNotFound: Couldn't find key 'key1'.".to_owned()));
+        assert_eq!(response, database_error!(DatabaseErrorType::KeyNotFound("key1".to_string())));
     }
 
     #[test]
@@ -308,10 +286,10 @@ mod tests {
     fn test_set_many() {
         let mut store: BTreeMap<String, Vec<u8>> = BTreeMap::new();
         let _ = store::set_many(&mut store, vec![
-            parser::KeyValuePair { key: "key0".to_owned(), value: "val0".to_owned() },
-            parser::KeyValuePair { key: "key1".to_owned(), value: "val1".to_owned() },
-            parser::KeyValuePair { key: "key2".to_owned(), value: "val2".to_owned() },
-            parser::KeyValuePair { key: "key3".to_owned(), value: "val3".to_owned() },
+            KeyValuePair { key: "key0".to_owned(), value: "val0".to_owned() },
+            KeyValuePair { key: "key1".to_owned(), value: "val1".to_owned() },
+            KeyValuePair { key: "key2".to_owned(), value: "val2".to_owned() },
+            KeyValuePair { key: "key3".to_owned(), value: "val3".to_owned() },
         ]);
 
         let response = store::get(&mut store, "key2");
