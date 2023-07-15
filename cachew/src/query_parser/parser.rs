@@ -1,7 +1,7 @@
 use regex::Regex;
 
 use crate::query_parser::string_utils::{split_whitespaces};
-use crate::schemas::{QueryRequest, KeyValuePair};
+use crate::schemas::{QueryRequest, KeyValuePair, ValueType, DatabaseType};
 
 use crate::{parser_error};
 //use crate::errors::{ParserErrorType};
@@ -106,7 +106,39 @@ fn parse_del(query: &str) -> Result<QueryRequest, String> {
 }
 
 
-fn parse_set(query: &str) -> Result<QueryRequest, String> {
+
+fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) -> Result<ValueType, String> {
+    match database_type {
+        DatabaseType::Str => {
+            let parsed_value: String = match value_query_parameter.parse::<String>() {
+                Ok(parsed) => parsed,
+                Err(_) => return parser_error!(ParserErrorType::WrongValueType)
+            };
+            return Ok(ValueType::Str(parsed_value));
+        }
+        DatabaseType::Int => {
+            let parsed_value: i32 = match value_query_parameter.parse::<i32>() {
+                Ok(parsed) => parsed,
+                Err(_) => return parser_error!(ParserErrorType::WrongValueType)
+            };
+            return Ok(ValueType::Int(parsed_value));
+        },
+        DatabaseType::Float => {
+            let parsed_value: f32 = match value_query_parameter.parse::<f32>() {
+                Ok(parsed) => parsed,
+                Err(_) => return parser_error!(ParserErrorType::WrongValueType)
+            };
+            return Ok(ValueType::Float(parsed_value));
+        },
+        _ => {
+            Err(format!("Unknown database type '{}'!", database_type))
+        }
+    }
+
+}
+
+
+fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRequest<'a>, String> {
     if query.starts_with("MANY ") {
         let pattern = Regex::new(r"\s*,\s*").unwrap();
         let key_value_pairs: Vec<String> = pattern.split(query.strip_prefix("MANY ").unwrap()).map(|s| s.trim().to_owned()).collect();
@@ -117,7 +149,12 @@ fn parse_set(query: &str) -> Result<QueryRequest, String> {
             if parameters.len() != 2 {
                 return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
             }
-            parsed_pairs.push(KeyValuePair { key: parameters[0].to_owned(), value: parameters[1].to_owned()})
+
+            let parsed_value: Result<ValueType, String> = parse_set_value(parameters[1], database_type);
+            match parsed_value {
+                Ok(value) => parsed_pairs.push(KeyValuePair { key: parameters[0].to_owned(), value}),
+                Err(err) => return Err(err),
+            }
         }
 
         return Ok(QueryRequest::SET_MANY(parsed_pairs));
@@ -128,7 +165,13 @@ fn parse_set(query: &str) -> Result<QueryRequest, String> {
         return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
     }
 
-    Ok(QueryRequest::SET(KeyValuePair { key: parameters[0].to_owned(), value: parameters[1].to_owned()}))
+    let parsed_value: Result<ValueType, String> = parse_set_value(parameters[1], database_type);
+    match parsed_value {
+        Ok(value) => Ok(QueryRequest::SET(KeyValuePair { key: parameters[0].to_owned(), value})),
+        Err(err) => Err(err),
+    }
+
+    
 }
 
 
@@ -140,7 +183,7 @@ fn parse_set(query: &str) -> Result<QueryRequest, String> {
 /// 
 /// # Returns:
 /// An instance of `QueryRequest`, variants: GET, GET_RANGE, GET_MANY, SET, DEL, DEL_RANGE, DEL_MANY, or ERROR (if the parse failed).
-pub fn parse(query: &str) -> Result<QueryRequest, String> {
+pub fn parse<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRequest<'a>, String> {
     
     if query.starts_with("GET ") {
         return parse_get(query.strip_prefix("GET ").unwrap());
@@ -149,7 +192,7 @@ pub fn parse(query: &str) -> Result<QueryRequest, String> {
         return parse_del(query.strip_prefix("DEL ").unwrap());
     }
     else if query.starts_with("SET ") {
-        return parse_set(query.strip_prefix("SET ").unwrap());
+        return parse_set(query.strip_prefix("SET ").unwrap(), &database_type);
     }
 
     parser_error!(ParserErrorType::UnknownQueryOperation(query.to_string()))
@@ -251,31 +294,61 @@ mod tests {
 
     // Unit tests for the `set` function:
     #[test]
-    fn test_parse_set_parameters() {
-        let set_query = parse_set("key value");
-        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: "value".to_owned() })))
+    fn test_parse_set_parameters_str() {
+        let database_type: String = "STRING".to_string();
+        let set_query = parse_set("key value", &DatabaseType::Str);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Str("value".to_owned()) })))
+    }
+
+    #[test]
+    fn test_parse_set_parameters_int() {
+        let database_type: String = "INTEGER".to_string();
+        let set_query = parse_set("key 1", &DatabaseType::Int);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Int(1) })))
+    }
+
+    #[test]
+    fn test_parse_set_parameters_float() {
+        let database_type: String = "FLOAT".to_string();
+        let set_query = parse_set("key 0.95", &DatabaseType::Float);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Float(0.95) })))
     }
 
     #[test]
     fn test_parse_set_parameters_fail() {
-        let set_query = parse_set("key val0 val1");
+        let database_type: String = "STRING".to_string();
+        let set_query = parse_set("key val0 val1", &DatabaseType::Str);
         assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(3)))
     }
 
     #[test]
     fn test_parse_set_many_parameters() {
-        let get_query = parse_set("MANY key0 val0, key1 val1 ,   key2 val2,key3 val3");
+        let database_type: String = "STRING".to_string();
+        let get_query = parse_set("MANY key0 val0, key1 val1 ,   key2 val2,key3 val3", &DatabaseType::Str);
         assert_eq!(get_query, Ok(QueryRequest::SET_MANY(vec![
-            KeyValuePair { key: "key0".to_owned(), value: "val0".to_owned() },
-            KeyValuePair { key: "key1".to_owned(), value: "val1".to_owned() },
-            KeyValuePair { key: "key2".to_owned(), value: "val2".to_owned() },
-            KeyValuePair { key: "key3".to_owned(), value: "val3".to_owned() },
+            KeyValuePair { key: "key0".to_owned(), value: ValueType::Str("val0".to_owned()) },
+            KeyValuePair { key: "key1".to_owned(), value: ValueType::Str("val1".to_owned()) },
+            KeyValuePair { key: "key2".to_owned(), value: ValueType::Str("val2".to_owned()) },
+            KeyValuePair { key: "key3".to_owned(), value: ValueType::Str("val3".to_owned()) },
+        ])))
+    }
+
+    #[test]
+    fn test_parse_set_many_int() {
+        let database_type: String = "INTEGER".to_string();
+        let get_query = parse_set("MANY key0 1, key1 22, key2 -22, key3 1000", &DatabaseType::Int);
+        assert_eq!(get_query, Ok(QueryRequest::SET_MANY(vec![
+            KeyValuePair { key: "key0".to_owned(), value: ValueType::Int(1) },
+            KeyValuePair { key: "key1".to_owned(), value: ValueType::Int(22) },
+            KeyValuePair { key: "key2".to_owned(), value: ValueType::Int(-22) },
+            KeyValuePair { key: "key3".to_owned(), value: ValueType::Int(1000) },
         ])))
     }
 
     #[test]
     fn test_parse_set_many_parameters_fail() {
-        let set_query = parse_set("MANY key0 val0, key1,");   
+        let database_type: String = "STRING".to_string();
+        let set_query = parse_set("MANY key0 val0, key1,", &DatabaseType::Str);   
         assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(1)))
     }
     
@@ -284,52 +357,52 @@ mod tests {
 
     #[test]
     fn test_parse_get() {
-        let get_query = parse("GET key");
+        let get_query = parse("GET key", &DatabaseType::Str);
         assert_eq!(get_query, Ok(QueryRequest::GET("key".to_string())))
     }
 
     #[test]
     fn test_parse_get_range() {
-        let get_query = parse("GET RANGE key0 key1");
+        let get_query = parse("GET RANGE key0 key1", &DatabaseType::Int);
         assert_eq!(get_query, Ok(QueryRequest::GET_RANGE { key_lower: "key0".to_string(), key_upper: "key1".to_string() }))
     }
 
     #[test]
     fn test_parse_get_many() {
-        let get_query = parse("GET MANY key0 key1 key2");
+        let get_query = parse("GET MANY key0 key1 key2", &DatabaseType::Float);
         assert_eq!(get_query, Ok(QueryRequest::GET_MANY(vec!["key0", "key1", "key2"])))
     }
 
     #[test]
     fn test_parse_del() {
-        let del_query = parse("DEL key");
+        let del_query = parse("DEL key", &DatabaseType::Str);
         assert_eq!(del_query, Ok(QueryRequest::DEL("key".to_string())))
     }
 
     #[test]
     fn test_parse_del_range() {
-        let del_query = parse("DEL RANGE key0 key1");
+        let del_query = parse("DEL RANGE key0 key1", &DatabaseType::Int);
         assert_eq!(del_query, Ok(QueryRequest::DEL_RANGE { key_lower: "key0".to_string(), key_upper: "key1".to_string() }))
     }
 
     #[test]
     fn test_parse_del_many() {
-        let del_query = parse("DEL MANY key0 key1 key2");
+        let del_query = parse("DEL MANY key0 key1 key2", &DatabaseType::Float);
         assert_eq!(del_query, Ok(QueryRequest::DEL_MANY(vec!["key0", "key1", "key2"])))
     }
 
     #[test]
     fn test_parse_set() {
-        let set_query = parse("SET key0 val1");
-        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key0".to_owned(), value: "val1".to_owned() } )))
+        let set_query = parse("SET key0 val1", &DatabaseType::Str);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key0".to_owned(), value: ValueType::Str("val1".to_owned()) } )))
     }
 
     #[test]
     fn test_parse_set_many() {
-        let set_query = parse("SET MANY key0 val0, key1 val1");
+        let set_query = parse("SET MANY key0 10, key1 -10", &DatabaseType::Int);
         assert_eq!(set_query, Ok(QueryRequest::SET_MANY(vec![
-            KeyValuePair { key: "key0".to_owned(), value: "val0".to_owned() },
-            KeyValuePair { key: "key1".to_owned(), value: "val1".to_owned() },
+            KeyValuePair { key: "key0".to_owned(), value: ValueType::Int(10) },
+            KeyValuePair { key: "key1".to_owned(), value: ValueType::Int(-10) },
         ])))
     }
     

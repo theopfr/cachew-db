@@ -1,3 +1,5 @@
+use std::{str::FromStr, fmt};
+
 use serde::{Serialize, Deserialize};
 
 
@@ -5,7 +7,7 @@ use serde::{Serialize, Deserialize};
 #[derive(Debug, PartialEq)]
 pub struct KeyValuePair {
     pub key: String,
-    pub value: String
+    pub value: ValueType
 }
 
 
@@ -30,7 +32,7 @@ pub enum ValueType {
 
 
 #[derive(Debug, PartialEq)]
-pub enum QueryResponse {
+pub enum QueryResponseType {
     GET_OK(ValueType),
     GET_RANGE_OK(Vec<ValueType>),
     GET_MANY_OK(Vec<ValueType>),
@@ -41,4 +43,18 @@ pub enum QueryResponse {
     SET_MANY_OK,
 }
 
+pub enum DatabaseType {
+    Str,
+    Int,
+    Float
+}
 
+impl fmt::Display for DatabaseType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+       match self {
+        DatabaseType::Str => write!(f, "STR"),
+        DatabaseType::Int => write!(f, "INT"),
+        DatabaseType::Float => write!(f, "FLOAT"),
+       }
+    }
+}

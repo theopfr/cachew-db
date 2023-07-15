@@ -21,8 +21,8 @@ impl fmt::Display for DatabaseError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "DatabaseError ");
         match &self.error_type {
-            DatabaseErrorType::KeyNotFound(key) => writeln!(f, "'keyNotFound': The key '{}' doesn't exist.", key),
-            DatabaseErrorType::InvalidRangeOrder => writeln!(f, "'invalidRangeOrder': The lower key is bigger than the upper key."),
+            DatabaseErrorType::KeyNotFound(key) => write!(f, "'keyNotFound': The key '{}' doesn't exist.", key),
+            DatabaseErrorType::InvalidRangeOrder => write!(f, "'invalidRangeOrder': The lower key is bigger than the upper key."),
         }
     }
 }

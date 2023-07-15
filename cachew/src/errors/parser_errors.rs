@@ -7,7 +7,8 @@ pub enum ParserErrorType {
     InvalidRange(usize),
     UnexpectedCharacter(String),
     InvalidKeyValuePair(usize),
-    UnknownQueryOperation(String)
+    UnknownQueryOperation(String),
+    WrongValueType
 }
 
 #[derive(Debug)]
@@ -22,10 +23,11 @@ impl fmt::Display for ParserError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ParserError ");
         match &self.error_type {
-            ParserErrorType::InvalidRange(num) => writeln!(f, "'invalidRange': Expected two keys got {}.", num),
-            ParserErrorType::UnexpectedCharacter(char) => writeln!(f, "'unexpectedCharacter': '{}' is not allowed in keys.", char),
-            ParserErrorType::InvalidKeyValuePair(num) => writeln!(f, "'invalidKeyValuePair': Expected two parameters (key and value), found {}.", num),
-            ParserErrorType::UnknownQueryOperation(op) => writeln!(f, "'unknownQueryOperation': Query '{}' not recognized.", op),
+            ParserErrorType::InvalidRange(num) => write!(f, "'invalidRange': Expected two keys got {}.", num),
+            ParserErrorType::UnexpectedCharacter(char) => write!(f, "'unexpectedCharacter': '{}' is not allowed in keys.", char),
+            ParserErrorType::InvalidKeyValuePair(num) => write!(f, "'invalidKeyValuePair': Expected two parameters (key and value), found {}.", num),
+            ParserErrorType::UnknownQueryOperation(op) => write!(f, "'unknownQueryOperation': Query '{}' not recognized.", op),
+            ParserErrorType::WrongValueType => write!(f, "'wrongValueType': The value doesn't match the database type."),
         }
     }
 }

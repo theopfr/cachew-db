@@ -22,9 +22,9 @@ impl fmt::Display for ProtocolError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ProtocolError ");
         match &self.error_type {
-            ProtocolErrorType::EmptyRequest => writeln!(f, "'emptyRequest': Can't process empty request."),
-            ProtocolErrorType::StartMarkerNotFound(expected_marker) => writeln!(f, "'startMarkerNotFound': Expected request to start with '{}'.", expected_marker),
-            ProtocolErrorType::EndMarkerNotFound(expected_marker) => writeln!(f, "'endMarkerNotFound': Expected request to end with '{}'.", expected_marker.replace('\n', "\\n")),
+            ProtocolErrorType::EmptyRequest => write!(f, "'emptyRequest': Can't process empty request."),
+            ProtocolErrorType::StartMarkerNotFound(expected_marker) => write!(f, "'startMarkerNotFound': Expected request to start with '{}'.", expected_marker),
+            ProtocolErrorType::EndMarkerNotFound(expected_marker) => write!(f, "'endMarkerNotFound': Expected request to end with '{}'.", expected_marker.replace('\n', "\\n")),
         }
     }
 }

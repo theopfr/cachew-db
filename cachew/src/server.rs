@@ -3,7 +3,7 @@ use tokio::{
     net::{TcpListener, tcp::ReadHalf}
 };
 
-use crate::{protocol_error};
+use crate::{protocol_error, schemas::DatabaseType};
 use crate::query_parser::parser;
 use crate::errors::protocol_errors::{ProtocolErrorType};
 
@@ -57,7 +57,7 @@ pub async fn server() {
 
                 // extract the raw database request form the message and parse it
                 let request: &str = line.strip_prefix(REQUEST_START_MARKER).unwrap().strip_suffix(REQUEST_END_MARKER).unwrap().trim();
-                let query = parser::parse(request);
+                let query = parser::parse(request, &DatabaseType::Str);
                 
                 match query {
                     Ok(_) => {
