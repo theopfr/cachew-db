@@ -129,9 +129,6 @@ fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) ->
                 Err(_) => return parser_error!(ParserErrorType::WrongValueType)
             };
             Ok(ValueType::Float(parsed_value))
-        },
-        _ => {
-            Err(format!("Unknown database type '{}'!", database_type))
         }
     }
 
@@ -192,7 +189,7 @@ pub fn parse<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
         return parse_del(query.strip_prefix("DEL ").unwrap());
     }
     else if query.starts_with("SET ") {
-        return parse_set(query.strip_prefix("SET ").unwrap(), &database_type);
+        return parse_set(query.strip_prefix("SET ").unwrap(), database_type);
     }
 
     parser_error!(ParserErrorType::UnknownQueryOperation(query.to_string()))
@@ -295,35 +292,30 @@ mod tests {
     // Unit tests for the `set` function:
     #[test]
     fn test_parse_set_parameters_str() {
-        let database_type: String = "STRING".to_string();
         let set_query = parse_set("key value", &DatabaseType::Str);
         assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Str("value".to_owned()) })))
     }
 
     #[test]
     fn test_parse_set_parameters_int() {
-        let database_type: String = "INTEGER".to_string();
         let set_query = parse_set("key 1", &DatabaseType::Int);
         assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Int(1) })))
     }
 
     #[test]
     fn test_parse_set_parameters_float() {
-        let database_type: String = "FLOAT".to_string();
         let set_query = parse_set("key 0.95", &DatabaseType::Float);
         assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Float(0.95) })))
     }
 
     #[test]
     fn test_parse_set_parameters_fail() {
-        let database_type: String = "STRING".to_string();
         let set_query = parse_set("key val0 val1", &DatabaseType::Str);
         assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(3)))
     }
 
     #[test]
     fn test_parse_set_many_parameters() {
-        let database_type: String = "STRING".to_string();
         let get_query = parse_set("MANY key0 val0, key1 val1 ,   key2 val2,key3 val3", &DatabaseType::Str);
         assert_eq!(get_query, Ok(QueryRequest::SET_MANY(vec![
             KeyValuePair { key: "key0".to_owned(), value: ValueType::Str("val0".to_owned()) },
@@ -335,7 +327,6 @@ mod tests {
 
     #[test]
     fn test_parse_set_many_int() {
-        let database_type: String = "INTEGER".to_string();
         let get_query = parse_set("MANY key0 1, key1 22, key2 -22, key3 1000", &DatabaseType::Int);
         assert_eq!(get_query, Ok(QueryRequest::SET_MANY(vec![
             KeyValuePair { key: "key0".to_owned(), value: ValueType::Int(1) },
@@ -347,11 +338,15 @@ mod tests {
 
     #[test]
     fn test_parse_set_many_parameters_fail() {
-        let database_type: String = "STRING".to_string();
         let set_query = parse_set("MANY key0 val0, key1,", &DatabaseType::Str);   
         assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(1)))
     }
-    
+
+    #[test]
+    fn test_parse_set_wrong_type() {
+        let set_query = parse_set("MANY key notAFloat", &DatabaseType::Float);   
+        assert_eq!(set_query, parser_error!(ParserErrorType::WrongValueType))
+    }
 
     // Unit tests for the `parse` function:
 
@@ -404,6 +399,12 @@ mod tests {
             KeyValuePair { key: "key0".to_owned(), value: ValueType::Int(10) },
             KeyValuePair { key: "key1".to_owned(), value: ValueType::Int(-10) },
         ])))
+    }
+
+    #[test]
+    fn test_parse_unknown() {
+        let set_query = parse("SEET key val", &DatabaseType::Str);
+        assert_eq!(set_query, parser_error!(ParserErrorType::UnknownQueryOperation("SEET key val".to_string())))
     }
     
 }

@@ -36,6 +36,7 @@ macro_rules! protocol_error {
             (Box::new($crate::errors::protocol_errors::ProtocolError {
                 error_type: $err_type,
             }) as Box<dyn std::error::Error>).to_string()
-        )
+        );
     };
 }
+

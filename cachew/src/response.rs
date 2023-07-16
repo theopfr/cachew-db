@@ -5,18 +5,6 @@ use std::fmt::{self, Write};
 use crate::schemas::{ValueType, QueryResponseType, DatabaseType};
 
 
-impl std::fmt::Display for ValueType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ValueType::Str(value) => write!(f, "{}", value),
-            ValueType::Int(value) => write!(f, "{}", value),
-            ValueType::Float(value) => write!(f, "{}", value),
-        }
-    }
-}
-
-
-
 pub struct QueryResponse { }
 
 impl QueryResponse {

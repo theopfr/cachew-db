@@ -90,3 +90,28 @@ pub async fn serve(db: Database, database_type: DatabaseType) {
         tokio::spawn(run(socket, db_clone, database_type));
     }
 }
+
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_check_protocol() {
+        let request_set = check_protocol("CASP/SET key value/\n");
+        assert_eq!(request_set, Ok(()));
+    }
+
+    #[test]
+    fn test_check_protocol_fail() {
+        let protocol_validity = check_protocol("");
+        assert_eq!(protocol_validity.unwrap_err(), "ProtocolError 'emptyRequest': Can't process empty request.");
+
+        let protocol_validity = check_protocol("CAS/SET key value/\n");
+        assert_eq!(protocol_validity.unwrap_err(), format!("ProtocolError 'startMarkerNotFound': Expected request to start with '{}'.", REQUEST_START_MARKER));
+
+        let protocol_validity = check_protocol("CASP/SET key value");
+        assert_eq!(protocol_validity.unwrap_err(), format!("ProtocolError 'endMarkerNotFound': Expected request to end with '{}'.", REQUEST_END_MARKER.replace('\n', "\\n")));
+    }
+}
