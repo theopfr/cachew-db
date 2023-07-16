@@ -43,6 +43,8 @@ pub enum QueryResponseType {
     SET_MANY_OK,
 }
 
+
+#[derive(Copy, Clone)]
 pub enum DatabaseType {
     Str,
     Int,

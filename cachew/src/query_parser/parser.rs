@@ -114,21 +114,21 @@ fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) ->
                 Ok(parsed) => parsed,
                 Err(_) => return parser_error!(ParserErrorType::WrongValueType)
             };
-            return Ok(ValueType::Str(parsed_value));
+            Ok(ValueType::Str(parsed_value))
         }
         DatabaseType::Int => {
             let parsed_value: i32 = match value_query_parameter.parse::<i32>() {
                 Ok(parsed) => parsed,
                 Err(_) => return parser_error!(ParserErrorType::WrongValueType)
             };
-            return Ok(ValueType::Int(parsed_value));
+            Ok(ValueType::Int(parsed_value))
         },
         DatabaseType::Float => {
             let parsed_value: f32 = match value_query_parameter.parse::<f32>() {
                 Ok(parsed) => parsed,
                 Err(_) => return parser_error!(ParserErrorType::WrongValueType)
             };
-            return Ok(ValueType::Float(parsed_value));
+            Ok(ValueType::Float(parsed_value))
         },
         _ => {
             Err(format!("Unknown database type '{}'!", database_type))

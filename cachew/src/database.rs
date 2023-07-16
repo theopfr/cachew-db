@@ -4,13 +4,12 @@ use bincode::{serialize, deserialize};
 use std::ops::Bound::Included;
 use std::sync::{Arc, Mutex};
 
-use crate::schemas::{KeyValuePair, ValueType, QueryResponseType};
+use crate::schemas::{KeyValuePair, ValueType, QueryResponseType, QueryRequest};
 use crate::{database_error};
 use crate::errors::database_errors::{DatabaseErrorType};
 
 use std::marker::{Send, Copy};
 use std::fmt::{Debug, Display};
-
 
 
 
@@ -168,6 +167,19 @@ impl Database {
         Ok(QueryResponseType::SET_MANY_OK)
     }
 
+    pub fn execute_query(&mut self, query: QueryRequest) -> Result<QueryResponseType, String> {
+        match query {
+            QueryRequest::GET(key) => self.get(&key),
+            QueryRequest::GET_RANGE { key_lower, key_upper } => self.get_range(key_lower, key_upper),
+            QueryRequest::GET_MANY(keys) => self.get_many(keys),
+            QueryRequest::DEL(key) => self.del(&key),
+            QueryRequest::DEL_RANGE { key_lower, key_upper } => self.del_range(key_lower, key_upper),
+            QueryRequest::DEL_MANY(keys) => self.del_many(keys),
+            QueryRequest::SET(key_value_pair) => self.set(&key_value_pair.key, key_value_pair.value),
+            QueryRequest::SET_MANY(key_value_pairs) => self.set_many(key_value_pairs),
+        }
+    }
+
 }
 
 
@@ -178,8 +190,6 @@ impl Database {
 #[cfg(test)]
 mod tests {
     use crate::database;
-
-    // Note this useful idiom: importing names from outer (for mod tests) scope.
     use super::*;
 
     #[test]
