@@ -1,10 +1,7 @@
 
-<p align="left" width="100%" backround-color="red">
-    <img src="./images/cachew_logo.png" width="100">
+<p align="center" width="100%" backround-color="red">
+    <img src="./images/logo.jpg" width="300">
 </p>
 
-
-
-# CachewDB
-## A fast, light weight, type enforced, in-memory key-valued database
+# A fast, light weight, type enforced, in-memory key-valued database
 
