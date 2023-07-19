@@ -21,4 +21,4 @@ jobs:
     - name: Run tests
       run: cd ./cachew && cargo test --verbose
     - name: Check coverage
-      runn: cargo install cargo-tarpaulin && cargo tarpaulin --no-count --skip-clean --out Xml && bash <(curl -s https://codecov.io/bash)
+      run: cargo install cargo-tarpaulin && cargo tarpaulin --no-count --skip-clean --out Xml && bash <(curl -s https://codecov.io/bash)
