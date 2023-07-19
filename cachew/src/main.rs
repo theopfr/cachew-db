@@ -10,14 +10,16 @@ mod errors;
 use database::Database;
 use schemas::{DatabaseType};
 
+use log::{info, trace, warn};
+
 
 #[tokio::main]
 async fn main() {
 
-    let db: Database = Database::new();
     let database_type = DatabaseType::Str;
+    let db: Database = Database::new(database_type);
 
-    server::serve(db, database_type).await;
+    server::serve(db).await;
 
     /*let query1: Result<QueryRequest<'_>, String> = parser::parse("SET MANY key1 \"habba habbe\", key2 \"jabba jabba\", key3 \"babba babba\"", &database_type);
     match query1 {

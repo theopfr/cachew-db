@@ -3,5 +3,5 @@
     <img src="./images/logo.png" width="500">
 </p>
 
-# A fast, light weight, type enforced, in-memory key-valued database
+# A fast, light weight, type enforced, in-memory key-value database
 

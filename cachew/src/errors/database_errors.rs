@@ -5,7 +5,8 @@ use std::fmt;
 #[derive(Debug)]
 pub enum DatabaseErrorType {
     KeyNotFound(String),
-    InvalidRangeOrder
+    InvalidRangeOrder,
+    WrongValueType
 }
 
 
@@ -23,6 +24,7 @@ impl fmt::Display for DatabaseError {
         match &self.error_type {
             DatabaseErrorType::KeyNotFound(key) => write!(f, "'keyNotFound': The key '{}' doesn't exist.", key),
             DatabaseErrorType::InvalidRangeOrder => write!(f, "'invalidRangeOrder': The lower key is bigger than the upper key."),
+            DatabaseErrorType::WrongValueType => write!(f, "'wrongValueType': The value doesn't match the database type."),
         }
     }
 }

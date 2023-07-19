@@ -1,5 +1,6 @@
 use std::sync::{Arc};
 use tokio::sync::{Mutex, MutexGuard};
+use log::{info, trace, warn, error};
 
 use tokio::{
     io::{AsyncBufReadExt, AsyncWriteExt, BufReader},
@@ -33,7 +34,7 @@ fn check_protocol(request: &str) -> Result<(), String> {
 
 
 
-async fn run(mut socket: TcpStream, db_clone: Arc<Mutex<Database>>, dataset_type: DatabaseType) {
+async fn run(mut socket: TcpStream, db_clone: Arc<Mutex<Database>>) {
     let (socket_reader, mut socket_writer) = socket.split();
             
     let mut reader: BufReader<ReadHalf> = BufReader::new(socket_reader);
@@ -43,33 +44,40 @@ async fn run(mut socket: TcpStream, db_clone: Arc<Mutex<Database>>, dataset_type
         line.clear();
         let _byte_amount = reader.read_line(&mut line).await.unwrap();
         
+        info!("Incoming request: {:?}.", &line);
+
         // check if the incoming message followed the protocol specification
         match check_protocol(&line) {
             Ok(_) => { }
             Err(error) => {
+                error!("Invalid request. Request didn't follow CASP specification.");
                 socket_writer.write_all(QueryResponse::error(&error).to_string().as_bytes()).await.unwrap();
                 break;
             }
         }
 
+        let mut db_lock = db_clone.lock().await;
+
         // extract the raw database request form the message and parse it
         let request: &str = line.strip_prefix(REQUEST_START_MARKER).unwrap().strip_suffix(REQUEST_END_MARKER).unwrap().trim();
-        let query = parser::parse(request, &dataset_type);
+        let query = parser::parse(request, &db_lock.database_type);
         
-        let mut db_lock = db_clone.lock().await;
         match query {
             Ok(query) => {
                 match db_lock.execute_query(query) {
                     Ok(result) => {
-                        socket_writer.write_all(QueryResponse::ok(result, &dataset_type).to_string().as_bytes()).await.unwrap();                            
+                        info!("Successfully executed request.");
+                        socket_writer.write_all(QueryResponse::ok(result, &db_lock.database_type).to_string().as_bytes()).await.unwrap();                            
                     }
                     Err(error) => {
+                        error!("Failed to execute request. Error: {:?}.", &error);
                         socket_writer.write_all(QueryResponse::error(&error).to_string().as_bytes()).await.unwrap();                            
                     }
                 }
             }
-            Err(error) => { 
-                socket_writer.write_all(error.to_string().as_bytes()).await.unwrap();
+            Err(error) => {
+                error!("Failed to parse request. Error: {:?}.", &error);
+                socket_writer.write_all(QueryResponse::error(&error).to_string().as_bytes()).await.unwrap();                            
             }
         }
     }
@@ -77,18 +85,39 @@ async fn run(mut socket: TcpStream, db_clone: Arc<Mutex<Database>>, dataset_type
 
 
 
-pub async fn serve(db: Database, database_type: DatabaseType) {
-    let listener = TcpListener::bind("127.0.0.1:8080").await.expect("Failed to start CachewDB server!");
-    println!("Started server...");
-    let db: Arc<Mutex<Database>> = Arc::new(Mutex::new(db));
+pub async fn serve(db: Database) {
+    std::env::set_var("RUST_LOG", "debug");
+    std::env::set_var("RUST_BACKTRACE", "1");
+    env_logger::init();
 
-    loop {
-        let (socket, _address) = listener.accept().await.unwrap();
-        println!("accepted new client");
+    const HOST: &str = "127.0.0.1";
+    const PORT: &str = "8080";
 
-        let db_clone = Arc::clone(&db);
-        tokio::spawn(run(socket, db_clone, database_type));
+    let listener = TcpListener::bind(format!("{}:{}", HOST, PORT)).await;//.expect("Failed to start CachewDB server!");
+    //info!("Started server...");
+
+    match listener {
+        Ok(listener) => {
+            // Handle the success case here
+            info!("Started CachewDB server. Listening on {}:{}.", HOST, PORT);
+            let db: Arc<Mutex<Database>> = Arc::new(Mutex::new(db));
+            
+            loop {
+                let (socket, address) = listener.accept().await.unwrap();
+                info!("Accepted new client ({}).", address);
+
+                let db_clone = Arc::clone(&db);
+                tokio::spawn(run(socket, db_clone));
+            }
+        }
+        Err(error) => {
+            // Log the error using the log crate
+            error!("Failed to start CachewDB server! Error: {}", error);
+        }
     }
+
+
+    
 }
 
 
