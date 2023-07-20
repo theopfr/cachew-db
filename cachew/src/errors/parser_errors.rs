@@ -8,7 +8,8 @@ pub enum ParserErrorType {
     UnexpectedCharacter(String),
     InvalidKeyValuePair(usize),
     UnknownQueryOperation(String),
-    WrongValueType
+    WrongValueType,
+    WrongAuthentication
 }
 
 #[derive(Debug)]
@@ -28,6 +29,7 @@ impl fmt::Display for ParserError {
             ParserErrorType::InvalidKeyValuePair(num) => write!(f, "'invalidKeyValuePair': Expected two parameters (key and value), found {}.", num),
             ParserErrorType::UnknownQueryOperation(op) => write!(f, "'unknownQueryOperation': Query '{}' not recognized.", op),
             ParserErrorType::WrongValueType => write!(f, "'wrongValueType': The value doesn't match the database type."),
+            ParserErrorType::WrongAuthentication => write!(f, "'wrongAuthentication': Couldn't read password. Expecting: 'AUTH <password>'."),
         }
     }
 }

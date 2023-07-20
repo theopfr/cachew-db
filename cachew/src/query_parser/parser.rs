@@ -166,8 +166,16 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
         Ok(value) => Ok(QueryRequest::SET(KeyValuePair { key: parameters[0].to_owned(), value})),
         Err(err) => Err(err),
     }
+}
 
-    
+
+fn parse_auth(password: &str) -> Result<QueryRequest, String> {
+    if password.contains(' ') {
+        return parser_error!(ParserErrorType::WrongAuthentication);
+    }
+
+    return Ok(QueryRequest::AUTH(password.to_owned()));
+
 }
 
 
@@ -179,19 +187,21 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
 /// 
 /// # Returns:
 /// An instance of `QueryRequest`, variants: GET, GET_RANGE, GET_MANY, SET, DEL, DEL_RANGE, DEL_MANY, or ERROR (if the parse failed).
-pub fn parse<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRequest<'a>, String> {
-    
-    if query.starts_with("GET ") {
-        return parse_get(query.strip_prefix("GET ").unwrap());
+pub fn parse<'a>(request: &'a str, database_type: &DatabaseType) -> Result<QueryRequest<'a>, String> {
+    if request.starts_with("GET ") {
+        return parse_get(request.strip_prefix("GET ").unwrap());
     }
-    else if query.starts_with("DEL ") {
-        return parse_del(query.strip_prefix("DEL ").unwrap());
+    else if request.starts_with("DEL ") {
+        return parse_del(request.strip_prefix("DEL ").unwrap());
     }
-    else if query.starts_with("SET ") {
-        return parse_set(query.strip_prefix("SET ").unwrap(), database_type);
+    else if request.starts_with("SET ") {
+        return parse_set(request.strip_prefix("SET ").unwrap(), database_type);
+    }
+    else if request.starts_with("AUTH ") {
+        return parse_auth(request.strip_prefix("AUTH ").unwrap());
     }
 
-    parser_error!(ParserErrorType::UnknownQueryOperation(query.to_string()))
+    parser_error!(ParserErrorType::UnknownQueryOperation(request.to_string()))
 }
 
 

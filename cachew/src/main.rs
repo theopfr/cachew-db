@@ -3,23 +3,29 @@ mod server;
 mod schemas;
 mod database;
 mod response;
+mod state;
 
 #[macro_use]
 mod errors;
+
+use std::collections::HashMap;
 
 use database::Database;
 use schemas::{DatabaseType};
 
 use log::{info, trace, warn};
+use state::State;
 
 
 #[tokio::main]
 async fn main() {
 
     let database_type = DatabaseType::Str;
-    let db: Database = Database::new(database_type);
+    let state: State = State::new(database_type, "mypwd123".to_string());
 
-    server::serve(db).await;
+    // let auth_table: HashMap<String, u32> = HashMap::new();
+
+    server::serve(state).await;
 
     /*let query1: Result<QueryRequest<'_>, String> = parser::parse("SET MANY key1 \"habba habbe\", key2 \"jabba jabba\", key3 \"babba babba\"", &database_type);
     match query1 {

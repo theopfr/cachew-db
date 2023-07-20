@@ -70,6 +70,9 @@ impl QueryResponse {
             QueryResponseType::SET_MANY_OK => {
                 Self::build_ok_response("SET MANY".to_string(), None, database_type)
             },
+            QueryResponseType::AUTH_OK => {
+                format!("{}/{}/Authentication succeeded.{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, Self::CASP_SUFFIX)
+            }
         }
     }
 

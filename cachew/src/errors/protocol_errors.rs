@@ -6,7 +6,8 @@ use std::fmt;
 pub enum ProtocolErrorType {
     EmptyRequest,
     StartMarkerNotFound(String),
-    EndMarkerNotFound(String)
+    EndMarkerNotFound(String),
+    NoRequestBody
 }
 
 
@@ -25,6 +26,7 @@ impl fmt::Display for ProtocolError {
             ProtocolErrorType::EmptyRequest => write!(f, "'emptyRequest': Can't process empty request."),
             ProtocolErrorType::StartMarkerNotFound(expected_marker) => write!(f, "'startMarkerNotFound': Expected request to start with '{}'.", expected_marker),
             ProtocolErrorType::EndMarkerNotFound(expected_marker) => write!(f, "'endMarkerNotFound': Expected request to end with '{}'.", expected_marker.replace('\n', "\\n")),
+            ProtocolErrorType::NoRequestBody => write!(f, "'noRequestBody': No request body found."),
         }
     }
 }

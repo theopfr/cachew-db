@@ -1,4 +1,4 @@
-use std::sync::{Arc};
+use std::{sync::{Arc}, net::SocketAddr};
 use tokio::sync::{Mutex, MutexGuard};
 use log::{info, trace, warn, error};
 
@@ -7,7 +7,7 @@ use tokio::{
     net::{TcpListener, TcpStream, tcp::ReadHalf}
 };
 
-use crate::response::QueryResponse;
+use crate::{response::QueryResponse, state::State};
 use crate::{protocol_error, schemas::DatabaseType, database::Database};
 use crate::query_parser::parser;
 use crate::errors::protocol_errors::{ProtocolErrorType};
@@ -29,12 +29,16 @@ fn check_protocol(request: &str) -> Result<(), String> {
         protocol_error!(ProtocolErrorType::EndMarkerNotFound(REQUEST_END_MARKER.to_string()))
     }
 
+    else if request.len() <= (REQUEST_START_MARKER.len() + REQUEST_END_MARKER.len()) {
+        protocol_error!(ProtocolErrorType::EndMarkerNotFound(REQUEST_END_MARKER.to_string()))
+    }
+
     Ok(())
 }
 
 
 
-async fn run(mut socket: TcpStream, db_clone: Arc<Mutex<Database>>) {
+async fn run(mut socket: TcpStream, address: SocketAddr, state_clone: Arc<Mutex<State>>) {
     let (socket_reader, mut socket_writer) = socket.split();
             
     let mut reader: BufReader<ReadHalf> = BufReader::new(socket_reader);
@@ -44,6 +48,14 @@ async fn run(mut socket: TcpStream, db_clone: Arc<Mutex<Database>>) {
         line.clear();
         let _byte_amount = reader.read_line(&mut line).await.unwrap();
         
+        let mut state_lock = state_clone.lock().await;
+
+        if _byte_amount == 0 {
+            warn!("Connection closed. ({})", address);
+            state_lock.remove_client(&address.to_string());
+            return;
+        }
+
         info!("Incoming request: {:?}.", &line);
 
         // check if the incoming message followed the protocol specification
@@ -56,18 +68,17 @@ async fn run(mut socket: TcpStream, db_clone: Arc<Mutex<Database>>) {
             }
         }
 
-        let mut db_lock = db_clone.lock().await;
 
         // extract the raw database request form the message and parse it
         let request: &str = line.strip_prefix(REQUEST_START_MARKER).unwrap().strip_suffix(REQUEST_END_MARKER).unwrap().trim();
-        let query = parser::parse(request, &db_lock.database_type);
+        let query = parser::parse(request, &state_lock.database_type);
         
         match query {
             Ok(query) => {
-                match db_lock.execute_query(query) {
+                match state_lock.execute_request(&address.to_string(), query) {
                     Ok(result) => {
                         info!("Successfully executed request.");
-                        socket_writer.write_all(QueryResponse::ok(result, &db_lock.database_type).to_string().as_bytes()).await.unwrap();                            
+                        socket_writer.write_all(QueryResponse::ok(result, &state_lock.database_type).to_string().as_bytes()).await.unwrap();                            
                     }
                     Err(error) => {
                         error!("Failed to execute request. Error: {:?}.", &error);
@@ -85,7 +96,7 @@ async fn run(mut socket: TcpStream, db_clone: Arc<Mutex<Database>>) {
 
 
 
-pub async fn serve(db: Database) {
+pub async fn serve(state: State) {
     std::env::set_var("RUST_LOG", "debug");
     std::env::set_var("RUST_BACKTRACE", "1");
     env_logger::init();
@@ -93,21 +104,20 @@ pub async fn serve(db: Database) {
     const HOST: &str = "127.0.0.1";
     const PORT: &str = "8080";
 
-    let listener = TcpListener::bind(format!("{}:{}", HOST, PORT)).await;//.expect("Failed to start CachewDB server!");
-    //info!("Started server...");
+    let listener = TcpListener::bind(format!("{}:{}", HOST, PORT)).await;
 
     match listener {
         Ok(listener) => {
             // Handle the success case here
             info!("Started CachewDB server. Listening on {}:{}.", HOST, PORT);
-            let db: Arc<Mutex<Database>> = Arc::new(Mutex::new(db));
+            let state: Arc<Mutex<State>> = Arc::new(Mutex::new(state));
             
             loop {
                 let (socket, address) = listener.accept().await.unwrap();
                 info!("Accepted new client ({}).", address);
 
-                let db_clone = Arc::clone(&db);
-                tokio::spawn(run(socket, db_clone));
+                let state_clone = Arc::clone(&state);
+                tokio::spawn(run(socket, address, state_clone));
             }
         }
         Err(error) => {
@@ -115,9 +125,6 @@ pub async fn serve(db: Database) {
             error!("Failed to start CachewDB server! Error: {}", error);
         }
     }
-
-
-    
 }
 
 

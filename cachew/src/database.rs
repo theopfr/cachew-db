@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::str::FromStr;
 use bincode::{serialize, deserialize};
 use std::ops::Bound::Included;
@@ -12,10 +12,9 @@ use std::marker::{Send, Copy};
 use std::fmt::{Debug, Display};
 
 
-
 pub struct Database {
     pub database_type: DatabaseType,
-    storage: BTreeMap<String, Vec<u8>>
+    storage: BTreeMap<String, Vec<u8>>,
 }
 
 
@@ -193,7 +192,7 @@ impl Database {
         Ok(QueryResponseType::SET_MANY_OK)
     }
 
-    pub fn execute_query(&mut self, query: QueryRequest) -> Result<QueryResponseType, String> {
+    /*pub fn execute_query(&mut self, query: QueryRequest) -> Result<QueryResponseType, String> {
         match query {
             QueryRequest::GET(key) => self.get(&key),
             QueryRequest::GET_RANGE { key_lower, key_upper } => self.get_range(key_lower, key_upper),
@@ -204,7 +203,7 @@ impl Database {
             QueryRequest::SET(key_value_pair) => self.set(&key_value_pair.key, key_value_pair.value),
             QueryRequest::SET_MANY(key_value_pairs) => self.set_many(key_value_pairs),
         }
-    }
+    }*/
 
 }
 
@@ -381,7 +380,7 @@ mod tests {
         assert_eq!(response, database_error!(DatabaseErrorType::WrongValueType));
     }
 
-    #[test]
+    /*#[test]
     fn test_execute_query() {
         let mut database: database::Database = database::Database::new(DatabaseType::Str);
 
@@ -416,5 +415,6 @@ mod tests {
 
         let response_del_range = database.execute_query(QueryRequest::DEL_RANGE { key_lower: "key2".to_string(), key_upper: "key5".to_string() });
         assert_eq!(response_del_range, Ok(database::QueryResponseType::DEL_RANGE_OK));    
-    }
+        
+    }*/
 }
