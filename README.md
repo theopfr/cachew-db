@@ -41,18 +41,24 @@ Examples:
 - CASP/SET MANY k1 1, k2 2, k3 3/\n
 
 #### Responses:
-| prefix | delimiter | status | delimiter | type | delimiter | type | command type | message | delimiter | suffix |
+For GET requests:
+| prefix | delimiter | status | delimiter | type | delimiter | command | delimiter | message | delimiter | suffix |
+|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
+| CASP | / | OK | / | *type* | / | *command* | / | *response* | / | \n |
+
+For any other requests requests (the difference to the GET request is that there is no type paramter in the response):
+| prefix | delimiter | status | delimiter | command | delimiter | message | delimiter | suffix |
 |:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
 | CASP | / | OK | / | *type* | / | *command* | / | *response* | / | \n |
 
 Where *type* is one of: 
-STR, INT, FLOAT
+**STR**, **INT**, **FLOAT**
 
 Where *command* is one of the command identifiers: 
-AUTH, SET, SET MANY, GET, GET MANY, GET RANGE, DEL, DEL MANY, DEL RANGE
+**AUTH**, **SET**, **SET MANY**, **GET**, **GET MANY**, **GET RANGE**, **DEL**, **DEL MANY**, **DEL RANGE**
 
 Examples:
-- CASP/OK/Authentication succeeded./\n (no type parameter for AUTH requests!)
+- CASP/OK/Authentication succeeded./\n
 - CASP/OK/SET/\n
 - CASP/OK/STR/GET MANY/"v1","v2"/\n
 - CASP/ERROR/ParserError 'invalidKeyValuePair': Expected two parameters (key and value), found 1./\n
