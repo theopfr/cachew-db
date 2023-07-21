@@ -71,7 +71,7 @@ impl QueryResponse {
                 Self::build_ok_response("SET MANY".to_string(), None, database_type)
             },
             QueryResponseType::AUTH_OK => {
-                format!("{}/{}/Authentication succeeded.{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, Self::CASP_SUFFIX)
+                format!("{}/{}/Authentication succeeded./{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, Self::CASP_SUFFIX)
             }
         }
     }
@@ -187,8 +187,17 @@ mod tests {
     }
 
     #[test]
-    fn test_error() {
-        let response = QueryResponse::error("This is an error message");
-        assert_eq!(response, "CASP/ERROR/This is an error message/\n")
+    fn test_auth() {
+        let response = QueryResponse::ok(
+            QueryResponseType::AUTH_OK,
+            &DatabaseType::Float
+        );
+        assert_eq!(response, "CASP/OK/Authentication succeeded./\n")
     }
+
+    #[test]
+    fn test_error() {
+        let response = QueryResponse::error("This is an error message.");
+        assert_eq!(response, "CASP/ERROR/This is an error message./\n")
+    } 
 }

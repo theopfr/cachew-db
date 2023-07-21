@@ -6,7 +6,7 @@ use std::fmt;
 pub enum AuthenticationErrorType {
     NotAuthenticated,
     AuthenticationFailed,
-    AlreadyAuthenticated
+    //AlreadyAuthenticated
 }
 
 
@@ -24,7 +24,7 @@ impl fmt::Display for AuthenticationError {
         match &self.error_type {
             AuthenticationErrorType::NotAuthenticated => write!(f, "'notAuthenticated': Please authenticate before executing queries."),
             AuthenticationErrorType::AuthenticationFailed => write!(f, "'authenticationFailed': Wrong password."),
-            AuthenticationErrorType::AlreadyAuthenticated => write!(f, "'alreadyAuthenticated': You are already authenticated."),
+            //AuthenticationErrorType::AlreadyAuthenticated => write!(f, "'alreadyAuthenticated': You are already authenticated."),
         }
     }
 }

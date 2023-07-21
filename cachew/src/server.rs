@@ -9,7 +9,7 @@ use tokio::{
 
 use crate::{response::QueryResponse, state::State};
 use crate::{protocol_error, schemas::DatabaseType, database::Database};
-use crate::query_parser::parser;
+use crate::parser;
 use crate::errors::protocol_errors::{ProtocolErrorType};
 
 
@@ -38,7 +38,7 @@ fn check_protocol(request: &str) -> Result<(), String> {
 
 
 
-async fn run(mut socket: TcpStream, address: SocketAddr, state_clone: Arc<Mutex<State>>) {
+async fn handle_client(mut socket: TcpStream, address: SocketAddr, state_clone: Arc<Mutex<State>>) {
     let (socket_reader, mut socket_writer) = socket.split();
             
     let mut reader: BufReader<ReadHalf> = BufReader::new(socket_reader);
@@ -52,7 +52,7 @@ async fn run(mut socket: TcpStream, address: SocketAddr, state_clone: Arc<Mutex<
 
         if _byte_amount == 0 {
             warn!("Connection closed. ({})", address);
-            state_lock.remove_client(&address.to_string());
+            state_lock.deauthenticate(&address.to_string());
             return;
         }
 
@@ -117,7 +117,7 @@ pub async fn serve(state: State) {
                 info!("Accepted new client ({}).", address);
 
                 let state_clone = Arc::clone(&state);
-                tokio::spawn(run(socket, address, state_clone));
+                tokio::spawn(handle_client(socket, address, state_clone));
             }
         }
         Err(error) => {
@@ -137,10 +137,7 @@ mod tests {
     fn test_check_protocol() {
         let request_set = check_protocol("CASP/SET key value/\n");
         assert_eq!(request_set, Ok(()));
-    }
 
-    #[test]
-    fn test_check_protocol_fail() {
         let protocol_validity = check_protocol("");
         assert_eq!(protocol_validity.unwrap_err(), "ProtocolError 'emptyRequest': Can't process empty request.");
 
@@ -150,4 +147,5 @@ mod tests {
         let protocol_validity = check_protocol("CASP/SET key value");
         assert_eq!(protocol_validity.unwrap_err(), format!("ProtocolError 'endMarkerNotFound': Expected request to end with '{}'.", REQUEST_END_MARKER.replace('\n', "\\n")));
     }
+
 }

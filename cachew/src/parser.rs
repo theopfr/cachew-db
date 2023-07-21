@@ -1,6 +1,5 @@
 use regex::Regex;
 
-use crate::query_parser::string_utils::{split_whitespaces};
 use crate::schemas::{QueryRequest, KeyValuePair, ValueType, DatabaseType};
 
 use crate::{parser_error};
@@ -204,6 +203,23 @@ pub fn parse<'a>(request: &'a str, database_type: &DatabaseType) -> Result<Query
     parser_error!(ParserErrorType::UnknownQueryOperation(request.to_string()))
 }
 
+/// Splits a string at its spaces, unless enclosed by quotes.
+/// 
+/// # Arguments:
+/// * `string`: The string to split.
+/// 
+/// # Returns:
+/// A vector containing the parts of the string (with quotes removed).
+pub fn split_whitespaces(string: &str) -> Vec<&str>{
+    let regex = Regex::new(r#""[^"]+"|\S+"#).unwrap();
+    regex.find_iter(string).map(|m| {
+        let matched_string: &str = m.as_str();
+        if matched_string.contains(' ') {
+            return matched_string.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
+        }
+        matched_string
+    }).collect()
+}
 
 
 
@@ -330,6 +346,17 @@ mod tests {
         assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(1)))
     }
 
+    // Unit tests for the `parse_auth` function:
+
+    #[test]
+    fn test_parse_auth() {
+        let auth_request = parse_auth("password123");
+        assert_eq!(auth_request, Ok(QueryRequest::AUTH("password123".to_string())));
+
+        let failed_auth_request = parse_auth("pass word 123");
+        assert_eq!(failed_auth_request, parser_error!(ParserErrorType::WrongAuthentication));
+    }
+
     // Unit tests for the `parse` function:
 
     #[test]
@@ -369,67 +396,11 @@ mod tests {
 
         let set_query = parse("UNKNOWN key val", &DatabaseType::Str);
         assert_eq!(set_query, parser_error!(ParserErrorType::UnknownQueryOperation("UNKNOWN key val".to_string())));
-
-    }
-
-    /*#[test]
-    fn test_parse_get_range() {
-        let get_range_query = parse("GET RANGE key0 key1", &DatabaseType::Int);
-        assert_eq!(get_range_query, Ok(QueryRequest::GET_RANGE { key_lower: "key0".to_string(), key_upper: "key1".to_string() }));
-
-        let get_range_query = parse("GET RANGE key0", &DatabaseType::Int);
-        assert_eq!(get_range_query, parser_error!(ParserErrorType::InvalidRange(1)))
     }
 
     #[test]
-    fn test_parse_get_many() {
-        let get_many_query = parse("GET MANY key0 key1 key2", &DatabaseType::Float);
-        assert_eq!(get_many_query, Ok(QueryRequest::GET_MANY(vec!["key0", "key1", "key2"])))
+    fn test_split_whitespaces() {
+        let split_string: Vec<&str> = split_whitespaces("test test \"in quotes\" test \"in quotes\"");
+        assert_eq!(split_string, vec!["test", "test", "in quotes", "test", "in quotes"]);
     }
-
-    #[test]
-    fn test_parse_get_comma_fail() {
-        let get_query = parse("GET MANY key0, key1, key2", &DatabaseType::Float);
-        assert_eq!(get_query, parser_error!(ParserErrorType::UnexpectedCharacter(",".to_string())))
-    }
-
-    #[test]
-    fn test_parse_del() {
-        let del_query = parse("DEL key", &DatabaseType::Str);
-        assert_eq!(del_query, Ok(QueryRequest::DEL("key".to_string())))
-    }
-
-    #[test]
-    fn test_parse_del_range() {
-        let del_range_query = parse("DEL RANGE key0 key1", &DatabaseType::Int);
-        assert_eq!(del_range_query, Ok(QueryRequest::DEL_RANGE { key_lower: "key0".to_string(), key_upper: "key1".to_string() }))
-    }
-
-    #[test]
-    fn test_parse_del_many() {
-        let del_many_query = parse("DEL MANY key0 key1 key2", &DatabaseType::Float);
-        assert_eq!(del_many_query, Ok(QueryRequest::DEL_MANY(vec!["key0", "key1", "key2"])))
-    }
-
-    #[test]
-    fn test_parse_set() {
-        let set_query = parse("SET key0 val1", &DatabaseType::Str);
-        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key0".to_owned(), value: ValueType::Str("val1".to_owned()) } )))
-    }
-
-    #[test]
-    fn test_parse_set_many() {
-        let set_many_query = parse("SET MANY key0 10, key1 -10", &DatabaseType::Int);
-        assert_eq!(set_many_query, Ok(QueryRequest::SET_MANY(vec![
-            KeyValuePair { key: "key0".to_owned(), value: ValueType::Int(10) },
-            KeyValuePair { key: "key1".to_owned(), value: ValueType::Int(-10) },
-        ])))
-    }
-
-    #[test]
-    fn test_parse_unknown() {
-        let set_query = parse("SEET key val", &DatabaseType::Str);
-        assert_eq!(set_query, parser_error!(ParserErrorType::UnknownQueryOperation("SEET key val".to_string())))
-    }*/
-    
 }

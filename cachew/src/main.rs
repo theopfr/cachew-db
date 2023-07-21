@@ -1,4 +1,4 @@
-mod query_parser;
+mod parser;
 mod server;
 mod schemas;
 mod database;

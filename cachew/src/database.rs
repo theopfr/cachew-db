@@ -191,20 +191,6 @@ impl Database {
         }
         Ok(QueryResponseType::SET_MANY_OK)
     }
-
-    /*pub fn execute_query(&mut self, query: QueryRequest) -> Result<QueryResponseType, String> {
-        match query {
-            QueryRequest::GET(key) => self.get(&key),
-            QueryRequest::GET_RANGE { key_lower, key_upper } => self.get_range(key_lower, key_upper),
-            QueryRequest::GET_MANY(keys) => self.get_many(keys),
-            QueryRequest::DEL(key) => self.del(&key),
-            QueryRequest::DEL_RANGE { key_lower, key_upper } => self.del_range(key_lower, key_upper),
-            QueryRequest::DEL_MANY(keys) => self.del_many(keys),
-            QueryRequest::SET(key_value_pair) => self.set(&key_value_pair.key, key_value_pair.value),
-            QueryRequest::SET_MANY(key_value_pairs) => self.set_many(key_value_pairs),
-        }
-    }*/
-
 }
 
 
@@ -379,42 +365,4 @@ mod tests {
         ]);
         assert_eq!(response, database_error!(DatabaseErrorType::WrongValueType));
     }
-
-    /*#[test]
-    fn test_execute_query() {
-        let mut database: database::Database = database::Database::new(DatabaseType::Str);
-
-        let response_set = database.execute_query(QueryRequest::SET(KeyValuePair { key: "key".to_string(), value: ValueType::Str("value".to_string()) }));
-        assert_eq!(response_set, Ok(database::QueryResponseType::SET_OK));
-
-        let response_set_many = database.execute_query(QueryRequest::SET_MANY(vec![
-            KeyValuePair { key: "key1".to_string(), value: ValueType::Str("value1".to_string()) },
-            KeyValuePair { key: "key2".to_string(), value: ValueType::Str("value2".to_string()) },
-            KeyValuePair { key: "key3".to_string(), value: ValueType::Str("value3".to_string()) },
-            KeyValuePair { key: "key4".to_string(), value: ValueType::Str("value4".to_string()) },
-            KeyValuePair { key: "key5".to_string(), value: ValueType::Str("value5".to_string()) }
-        ]));
-        assert_eq!(response_set_many, Ok(database::QueryResponseType::SET_MANY_OK));
-
-        let response_get = database.execute_query(QueryRequest::GET("key1".to_string()));
-        assert_eq!(response_get, Ok(database::QueryResponseType::GET_OK(ValueType::Str("value1".to_string()))));
-
-        let response_get_many = database.execute_query(QueryRequest::GET_MANY(vec!["key3", "key2"]));
-        assert_eq!(response_get_many, Ok(database::QueryResponseType::GET_MANY_OK(vec![ValueType::Str("value3".to_string()), ValueType::Str("value2".to_string())])));
-
-        let response_get_range = database.execute_query(QueryRequest::GET_RANGE { key_lower: "key2".to_string(), key_upper: "key4".to_string() });
-        assert_eq!(response_get_range, Ok(database::QueryResponseType::GET_RANGE_OK(vec![
-            ValueType::Str("value2".to_string()), ValueType::Str("value3".to_string()), ValueType::Str("value4".to_string())
-        ])));
-        
-        let response_del = database.execute_query(QueryRequest::DEL("key1".to_string()));
-        assert_eq!(response_del, Ok(database::QueryResponseType::DEL_OK));
-
-        let response_del_many = database.execute_query(QueryRequest::DEL_MANY(vec!["key4", "key3"]));
-        assert_eq!(response_del_many, Ok(database::QueryResponseType::DEL_MANY_OK));
-
-        let response_del_range = database.execute_query(QueryRequest::DEL_RANGE { key_lower: "key2".to_string(), key_upper: "key5".to_string() });
-        assert_eq!(response_del_range, Ok(database::QueryResponseType::DEL_RANGE_OK));    
-        
-    }*/
 }
