@@ -41,20 +41,25 @@ Examples:
 - CASP/SET MANY k1 1, k2 2, k3 3/\n
 
 #### Responses:
-For GET requests:
-| prefix | delimiter | status | delimiter | type | delimiter | command | delimiter | message | delimiter | suffix |
-|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
-| CASP | / | OK | / | *type* | / | *command* | / | *response* | / | \n |
+1. For GET requests:
+   | prefix | delimiter | status | delimiter | type | delimiter | command | delimiter | message | delimiter | suffix |
+   |:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
+   | CASP | / | OK | / | *type* | / | *command* | / | *response* | / | \n |
 
-For any other requests requests (the difference to the GET request is that there is no type paramter in the response):
-| prefix | delimiter | status | delimiter | command | delimiter | message | delimiter | suffix |
-|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
-| CASP | / | OK | / | *type* | / | *command* | / | *response* | / | \n |
+2. For any other requests requests (the difference to the GET request is that there is no type paramter):
+   | prefix | delimiter | status | delimiter | command | delimiter | suffix |
+   |:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
+   | CASP | / | OK | / | *command* | / | \n |
+
+3. Error responses:
+   | prefix | delimiter | status | delimiter | message | delimiter | suffix |
+   |:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
+   | CASP | / | ERROR | / | *error message* | / | \n |
 
 Where *type* is one of: 
 **STR**, **INT**, **FLOAT**
 
-Where *command* is one of the command identifiers: 
+And where *command* is one of the command identifiers: 
 **AUTH**, **SET**, **SET MANY**, **GET**, **GET MANY**, **GET RANGE**, **DEL**, **DEL MANY**, **DEL RANGE**
 
 Examples:
