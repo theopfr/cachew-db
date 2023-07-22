@@ -26,45 +26,16 @@
 | **DEL MANY** {key} {key} ... | Delete multiple key value pairs. | *DEL MANY key1 key2 key3* |
 | **DEL RANGE** {lower-key} {upper-key} | Delete a range of key value pairs. | *DEL RANGE aKey zKey* |
 
+### :memo: Types:
+Supported types are:
+| type | description |
+|:-------|:----------|
+| **STR** | Simple string (must be encapsulated with ``"`` when there are spaces). |
+| **INT** | 32 bit signed integer. |
+| **FLOAT** | 32 bit float. |
+| **BOOL** | *todo* |
+| **JSON** | *todo* |
 
-### :memo: CASP specification:
-To send the commands above to a CachewDB, the custom CASP protocol has to be followed:
 
-#### Requests:
-| prefix | delimiter | message | delimiter |suffix |
-|:-------:|:-------:|:-------:|:-------:|:-------:|
-| CASP | / | *command* | / | /\n |
-
-Examples:
-- CASP/SET myKey "some value"/\n
-- CASP/GET myKey/\n
-- CASP/SET MANY k1 1, k2 2, k3 3/\n
-
-#### Responses:
-1. For GET requests:
-   | prefix | delimiter | status | delimiter | type | delimiter | command | delimiter | message | delimiter | suffix |
-   |:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
-   | CASP | / | OK | / | *type* | / | *command* | / | *response* | / | \n |
-
-2. For any other requests requests (the difference to the GET request is that there is no type paramter):
-   | prefix | delimiter | status | delimiter | command | delimiter | suffix |
-   |:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
-   | CASP | / | OK | / | *command* | / | \n |
-
-3. Error responses:
-   | prefix | delimiter | status | delimiter | message | delimiter | suffix |
-   |:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
-   | CASP | / | ERROR | / | *error message* | / | \n |
-
-Where *type* is one of: 
-**STR**, **INT**, **FLOAT**
-
-And where *command* is one of the command identifiers: 
-**AUTH**, **SET**, **SET MANY**, **GET**, **GET MANY**, **GET RANGE**, **DEL**, **DEL MANY**, **DEL RANGE**
-
-Examples:
-- CASP/OK/Authentication succeeded./\n
-- CASP/OK/SET/\n
-- CASP/OK/STR/GET MANY/"v1","v2"/\n
-- CASP/ERROR/ParserError 'invalidKeyValuePair': Expected two parameters (key and value), found 1./\n
-
+### :memo: CASP protocol specification:
+For the specification of the custom protocol used for communicating with a CachewDB instance check this document: [CASP_SPECIFICATION.md](./CASP_SPECIFICATION.md)
