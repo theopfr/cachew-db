@@ -1,3 +1,4 @@
+use log::warn;
 use regex::Regex;
 
 use crate::schemas::{QueryRequest, KeyValuePair, ValueType, DatabaseType};
@@ -108,25 +109,49 @@ fn parse_del(query: &str) -> Result<QueryRequest, String> {
 fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) -> Result<ValueType, String> {
     match database_type {
         DatabaseType::Str => {
-            let parsed_value: String = match value_query_parameter.parse::<String>() {
+            if !(value_query_parameter.starts_with('"') && value_query_parameter.ends_with('"') ){
+                return parser_error!(ParserErrorType::StringQuotesNotFound)
+            }
+            let value = value_query_parameter.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
+
+            let parsed_value: String = match value.parse::<String>() {
                 Ok(parsed) => parsed,
-                Err(_) => return parser_error!(ParserErrorType::WrongValueType)
+                Err(_) => return parser_error!(ParserErrorType::WrongValueType(database_type.to_string()))
             };
             Ok(ValueType::Str(parsed_value))
         }
         DatabaseType::Int => {
             let parsed_value: i32 = match value_query_parameter.parse::<i32>() {
                 Ok(parsed) => parsed,
-                Err(_) => return parser_error!(ParserErrorType::WrongValueType)
+                Err(_) => return parser_error!(ParserErrorType::WrongValueType(database_type.to_string()))
             };
             Ok(ValueType::Int(parsed_value))
         },
         DatabaseType::Float => {
             let parsed_value: f32 = match value_query_parameter.parse::<f32>() {
                 Ok(parsed) => parsed,
-                Err(_) => return parser_error!(ParserErrorType::WrongValueType)
+                Err(_) => return parser_error!(ParserErrorType::WrongValueType(database_type.to_string()))
             };
             Ok(ValueType::Float(parsed_value))
+        },
+        DatabaseType::Bool => {
+            let parsed_value: bool = match value_query_parameter.parse::<bool>() {
+                Ok(parsed) => parsed,
+                Err(_) => return parser_error!(ParserErrorType::WrongValueType(database_type.to_string()))
+            };
+            Ok(ValueType::Bool(parsed_value))
+        },
+        DatabaseType::Json => {
+            if !(value_query_parameter.starts_with('"') && value_query_parameter.ends_with('"') ){
+                return parser_error!(ParserErrorType::StringQuotesNotFound)
+            }
+            let value = value_query_parameter.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
+
+            let parsed_value: String = match value.parse::<String>() {
+                Ok(parsed) => parsed,
+                Err(_) => return parser_error!(ParserErrorType::WrongValueType(database_type.to_string()))
+            };
+            Ok(ValueType::Json(parsed_value))
         }
     }
 
@@ -143,7 +168,7 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
             let parameters: Vec<&str> = split_whitespaces(&pair);
             if parameters.len() != 2 {
                 return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
-            }
+            }            
 
             let parsed_value: Result<ValueType, String> = parse_set_value(parameters[1], database_type);
             match parsed_value {
@@ -155,11 +180,13 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
         return Ok(QueryRequest::SET_MANY(parsed_pairs));
     }
 
+    // check if the query consists just of a key and value
     let parameters: Vec<&str> = split_whitespaces(query);
     if parameters.len() != 2 {
         return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
     }
 
+    // parse value into the right value type
     let parsed_value: Result<ValueType, String> = parse_set_value(parameters[1], database_type);
     match parsed_value {
         Ok(value) => Ok(QueryRequest::SET(KeyValuePair { key: parameters[0].to_owned(), value})),
@@ -214,9 +241,6 @@ pub fn split_whitespaces(string: &str) -> Vec<&str>{
     let regex = Regex::new(r#""[^"]+"|\S+"#).unwrap();
     regex.find_iter(string).map(|m| {
         let matched_string: &str = m.as_str();
-        if matched_string.contains(' ') {
-            return matched_string.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
-        }
         matched_string
     }).collect()
 }
@@ -308,8 +332,11 @@ mod tests {
     // Unit tests for the `parse_set` function:
     #[test]
     fn test_parse_set() {
-        let set_query = parse_set("key value", &DatabaseType::Str);
+        let set_query = parse_set("key \"value\"", &DatabaseType::Str);
         assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Str("value".to_owned()) })));
+
+        let set_query = parse_set("key \"hello world\"", &DatabaseType::Str);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Str("hello world".to_owned()) })));
 
         let set_query = parse_set("key 1", &DatabaseType::Int);
         assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Int(1) })));
@@ -317,16 +344,29 @@ mod tests {
         let set_query = parse_set("key 0.95", &DatabaseType::Float);
         assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Float(0.95) })));
 
-        let set_query = parse_set("key val0 val1", &DatabaseType::Str);
+        let set_query = parse_set("key true", &DatabaseType::Bool);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Bool(true) })));
+
+        let set_query = parse_set("key false", &DatabaseType::Bool);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Bool(false) })));
+
+        let set_query = parse_set("key \"{key1: 10, key2: 20}\"", &DatabaseType::Json);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Json("{key1: 10, key2: 20}".to_owned()) })));
+
+        let set_query = parse_set("key \"val0\" \"val1\"", &DatabaseType::Str);
         assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(3)));
 
-        let set_query = parse_set("MANY key notAFloat", &DatabaseType::Float);   
-        assert_eq!(set_query, parser_error!(ParserErrorType::WrongValueType));
+        let set_query = parse_set("key value", &DatabaseType::Str);
+        assert_eq!(set_query, parser_error!(ParserErrorType::StringQuotesNotFound));
+
+        let database_type: DatabaseType = DatabaseType::Float;
+        let set_query = parse_set("MANY key notAFloat", &database_type);   
+        assert_eq!(set_query, parser_error!(ParserErrorType::WrongValueType(database_type.to_string())));
     }
 
     #[test]
     fn test_parse_set_many() {
-        let get_query = parse_set("MANY key0 val0, key1 val1 ,   key2 val2,key3 val3", &DatabaseType::Str);
+        let get_query = parse_set("MANY key0 \"val0\", key1 \"val1\" ,   key2 \"val2\",key3 \"val3\"", &DatabaseType::Str);
         assert_eq!(get_query, Ok(QueryRequest::SET_MANY(vec![
             KeyValuePair { key: "key0".to_owned(), value: ValueType::Str("val0".to_owned()) },
             KeyValuePair { key: "key1".to_owned(), value: ValueType::Str("val1".to_owned()) },
@@ -342,8 +382,8 @@ mod tests {
             KeyValuePair { key: "key3".to_owned(), value: ValueType::Int(1000) },
         ])));
 
-        let set_query = parse_set("MANY key0 val0, key1,", &DatabaseType::Str);   
-        assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(1)))
+        let set_query = parse_set("MANY key0 \"val0\", key1,", &DatabaseType::Str);   
+        assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(1)));
     }
 
     // Unit tests for the `parse_auth` function:
@@ -385,7 +425,7 @@ mod tests {
         let del_many_query = parse("DEL MANY key0 key1 key2", &DatabaseType::Float);
         assert_eq!(del_many_query, Ok(QueryRequest::DEL_MANY(vec!["key0", "key1", "key2"])));
 
-        let set_query = parse("SET key0 val1", &DatabaseType::Str);
+        let set_query = parse("SET key0 \"val1\"", &DatabaseType::Str);
         assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key0".to_owned(), value: ValueType::Str("val1".to_owned()) } )));
 
         let set_many_query = parse("SET MANY key0 10, key1 -10", &DatabaseType::Int);
@@ -394,13 +434,13 @@ mod tests {
             KeyValuePair { key: "key1".to_owned(), value: ValueType::Int(-10) },
         ])));
 
-        let set_query = parse("UNKNOWN key val", &DatabaseType::Str);
-        assert_eq!(set_query, parser_error!(ParserErrorType::UnknownQueryOperation("UNKNOWN key val".to_string())));
+        let set_query = parse("UNKNOWN key \"val\"", &DatabaseType::Str);
+        assert_eq!(set_query, parser_error!(ParserErrorType::UnknownQueryOperation("UNKNOWN key \"val\"".to_string())));
     }
 
     #[test]
     fn test_split_whitespaces() {
         let split_string: Vec<&str> = split_whitespaces("test test \"in quotes\" test \"in quotes\"");
-        assert_eq!(split_string, vec!["test", "test", "in quotes", "test", "in quotes"]);
+        assert_eq!(split_string, vec!["test", "test", "\"in quotes\"", "test", "\"in quotes\""]);
     }
 }

@@ -20,8 +20,8 @@ use state::State;
 #[tokio::main]
 async fn main() {
 
-    let database_type = DatabaseType::Str;
-    let state: State = State::new(database_type, "mypwd123".to_string());
+    let database_type = DatabaseType::Json;
+    let state: State = State::new(database_type, "pwd".to_string());
 
     // let auth_table: HashMap<String, u32> = HashMap::new();
 

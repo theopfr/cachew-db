@@ -29,7 +29,21 @@ pub enum ValueType {
     Str(String),
     Int(i32),
     Float(f32),
+    Bool(bool),
+    Json(String)
 }
+
+/*impl fmt::Display for ValueType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ValueType::Str(value) => write!(f, "{}", value),
+            ValueType::Int(value) => write!(f, "{}", value),
+            ValueType::Float(value) => write!(f, "{}", value),
+            ValueType::Bool(value) => write!(f, "{}", value),
+            ValueType::Json(value) => write!(f, "{}", value),
+        }
+    }
+}*/
 
 
 #[derive(Debug, PartialEq)]
@@ -50,15 +64,19 @@ pub enum QueryResponseType {
 pub enum DatabaseType {
     Str,
     Int,
-    Float
+    Float,
+    Bool,
+    Json
 }
 
 impl fmt::Display for DatabaseType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-       match self {
-        DatabaseType::Str => write!(f, "STR"),
-        DatabaseType::Int => write!(f, "INT"),
-        DatabaseType::Float => write!(f, "FLOAT"),
-       }
+        match self {
+            DatabaseType::Str => write!(f, "STR"),
+            DatabaseType::Int => write!(f, "INT"),
+            DatabaseType::Float => write!(f, "FLOAT"),
+            DatabaseType::Bool => write!(f, "BOOL"),
+            DatabaseType::Json => write!(f, "JSON"),
+        }
     }
 }

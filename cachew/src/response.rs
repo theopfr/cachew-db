@@ -26,6 +26,8 @@ impl QueryResponse {
             ValueType::Str(value) => format!("\"{}\"", value),
             ValueType::Int(value) => format!("{}", value),
             ValueType::Float(value) => format!("{}", value),
+            ValueType::Bool(value) => format!("{}", value),
+            ValueType::Json(value) => format!("{}", value),
         }
     }
 
@@ -71,7 +73,8 @@ impl QueryResponse {
                 Self::build_ok_response("SET MANY".to_string(), None, database_type)
             },
             QueryResponseType::AUTH_OK => {
-                format!("{}/{}/Authentication succeeded./{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, Self::CASP_SUFFIX)
+                //format!("{}/{}/AUTH/Authentication succeeded./{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, Self::CASP_SUFFIX)
+                Self::build_ok_response("AUTH".to_string(), None, database_type)
             }
         }
     }
@@ -192,7 +195,7 @@ mod tests {
             QueryResponseType::AUTH_OK,
             &DatabaseType::Float
         );
-        assert_eq!(response, "CASP/OK/Authentication succeeded./\n")
+        assert_eq!(response, "CASP/OK/AUTH/\n")
     }
 
     #[test]

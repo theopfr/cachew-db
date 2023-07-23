@@ -8,8 +8,9 @@ pub enum ParserErrorType {
     UnexpectedCharacter(String),
     InvalidKeyValuePair(usize),
     UnknownQueryOperation(String),
-    WrongValueType,
-    WrongAuthentication
+    WrongValueType(String),
+    WrongAuthentication,
+    StringQuotesNotFound
 }
 
 #[derive(Debug)]
@@ -28,8 +29,9 @@ impl fmt::Display for ParserError {
             ParserErrorType::UnexpectedCharacter(char) => write!(f, "'unexpectedCharacter': '{}' is not allowed in keys.", char),
             ParserErrorType::InvalidKeyValuePair(num) => write!(f, "'invalidKeyValuePair': Expected two parameters (key and value), found {}.", num),
             ParserErrorType::UnknownQueryOperation(op) => write!(f, "'unknownQueryOperation': Query '{}' not recognized.", op),
-            ParserErrorType::WrongValueType => write!(f, "'wrongValueType': The value doesn't match the database type."),
-            ParserErrorType::WrongAuthentication => write!(f, "'wrongAuthentication': Couldn't read password. Expecting: 'AUTH <password>'."),
+            ParserErrorType::WrongValueType(db_type) => write!(f, "'wrongValueType': The value doesn't match the database type '{}'.", db_type),
+            ParserErrorType::WrongAuthentication => write!(f, "'wrongAuthentication': Couldn't read password. Expected: 'AUTH <password>'."),
+            ParserErrorType::StringQuotesNotFound => write!(f, "'stringQuotesNotFound': Expected double quotes around strings."),
         }
     }
 }

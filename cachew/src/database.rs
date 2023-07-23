@@ -39,6 +39,12 @@ impl Database {
             },
             DatabaseType::Float => {
                 matches!(value, ValueType::Float(_))
+            },
+            DatabaseType::Bool => {
+                matches!(value, ValueType::Bool(_))
+            },
+            DatabaseType::Json => {
+                matches!(value, ValueType::Json(_))
             }
         }
     }
@@ -222,6 +228,18 @@ mod tests {
         let _ = database.set("key", ValueType::Float(-0.1));
         let response = database.get("key");
         assert_eq!(response, Ok(database::QueryResponseType::GET_OK(ValueType::Float(-0.1))));
+
+        // get bool
+        let mut database: database::Database = database::Database::new(DatabaseType::Bool);
+        let _ = database.set("key", ValueType::Bool(true));
+        let response = database.get("key");
+        assert_eq!(response, Ok(database::QueryResponseType::GET_OK(ValueType::Bool(true))));
+
+        // get json
+        let mut database: database::Database = database::Database::new(DatabaseType::Json);
+        let _ = database.set("key", ValueType::Json("{key: \"value\"}".to_string()));
+        let response = database.get("key");
+        assert_eq!(response, Ok(database::QueryResponseType::GET_OK(ValueType::Json("{key: \"value\"}".to_string()))));
 
         // fail to get key
         let mut database: database::Database = database::Database::new(DatabaseType::Int);
