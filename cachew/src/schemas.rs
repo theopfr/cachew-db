@@ -21,8 +21,12 @@ pub enum QueryRequest<'a> {
     DEL(String),
     DEL_RANGE { key_lower: String, key_upper: String},
     DEL_MANY(Vec<&'a str>),
-    AUTH(String)
+    AUTH(String),
+    CLEAR,
+    LEN,
+    PING
 }
+
 
 #[derive(Debug, Serialize, Deserialize, PartialEq)]
 pub enum ValueType {
@@ -56,7 +60,10 @@ pub enum QueryResponseType {
     DEL_MANY_OK,
     SET_OK,
     SET_MANY_OK,
-    AUTH_OK
+    AUTH_OK,
+    CLEAR_OK,
+    LEN_OK(usize),
+    PING_OK
 }
 
 

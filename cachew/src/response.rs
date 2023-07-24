@@ -2,7 +2,7 @@ use serde::{Serialize, Deserialize};
 use std::fmt::{self, Write};
 
 
-use crate::schemas::{ValueType, QueryResponseType, DatabaseType};
+use crate::{schemas::{ValueType, QueryResponseType, DatabaseType}, database};
 
 
 pub struct QueryResponse { }
@@ -14,11 +14,18 @@ impl QueryResponse {
     const CASP_OK_INDENTIFIER: &str = "OK";
     const CASP_ERROR_INDENTIFIER: &str = "ERROR";
 
-    fn build_ok_response(query_identifier: String, content: Option<String>, database_type: &DatabaseType) -> String {
-        match content {
+    fn build_ok_response(query_identifier: String, content: Option<String>, database_type: Option<&DatabaseType>) -> String {
+        match (content, database_type) {
+            (None, None) => return format!("{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, Self::CASP_SUFFIX),
+            (Some(content), None) => return format!("{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, content, Self::CASP_SUFFIX),
+            (Some(content), Some(database_type)) => return format!("{}/{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, database_type, query_identifier, content, Self::CASP_SUFFIX),
+            (None, Some(database_type)) => return format!("{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, database_type, query_identifier, Self::CASP_SUFFIX),
+        }
+
+        /*match content {
             Some(content) => format!("{}/{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, database_type, query_identifier, content, Self::CASP_SUFFIX),
             None => format!("{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, Self::CASP_SUFFIX)
-        }
+        }*/
     }
 
     fn handle_value_types(value: &ValueType) -> String {
@@ -27,14 +34,14 @@ impl QueryResponse {
             ValueType::Int(value) => format!("{}", value),
             ValueType::Float(value) => format!("{}", value),
             ValueType::Bool(value) => format!("{}", value),
-            ValueType::Json(value) => format!("{}", value),
+            ValueType::Json(value) => value.to_string(),
         }
     }
 
     pub fn ok(response: QueryResponseType, database_type: &DatabaseType) -> String {
         match response {
             QueryResponseType::GET_OK(value) => {
-                Self::build_ok_response("GET".to_string(), Some(Self::handle_value_types(&value)), database_type)
+                Self::build_ok_response("GET".to_string(), Some(Self::handle_value_types(&value)), Some(database_type))
             },
             QueryResponseType::GET_RANGE_OK(values) => {
                 let mut content: String = String::new();
@@ -44,7 +51,7 @@ impl QueryResponse {
                         write!(&mut content, ",").expect("");
                     }
                 }
-                Self::build_ok_response("GET RANGE".to_string(), Some(content), database_type)
+                Self::build_ok_response("GET RANGE".to_string(), Some(content), Some(database_type))
 
             },
             QueryResponseType::GET_MANY_OK(values) => {
@@ -55,27 +62,35 @@ impl QueryResponse {
                         write!(&mut content, ",").expect("");
                     }
                 }
-                Self::build_ok_response("GET MANY".to_string(), Some(content), database_type)
+                Self::build_ok_response("GET MANY".to_string(), Some(content), Some(database_type))
             },
             QueryResponseType::DEL_OK => {
-                Self::build_ok_response("DEL".to_string(), None, database_type)
+                Self::build_ok_response("DEL".to_string(), None, None)
             },
             QueryResponseType::DEL_RANGE_OK => {
-                Self::build_ok_response("DEL RANGE".to_string(), None, database_type)
+                Self::build_ok_response("DEL RANGE".to_string(), None, None)
             },
             QueryResponseType::DEL_MANY_OK => {
-                Self::build_ok_response("DEL MANY".to_string(), None, database_type)
+                Self::build_ok_response("DEL MANY".to_string(), None, None)
             },
             QueryResponseType::SET_OK => {
-                Self::build_ok_response("SET".to_string(), None, database_type)
+                Self::build_ok_response("SET".to_string(), None, None)
             },
             QueryResponseType::SET_MANY_OK => {
-                Self::build_ok_response("SET MANY".to_string(), None, database_type)
+                Self::build_ok_response("SET MANY".to_string(), None, None)
             },
             QueryResponseType::AUTH_OK => {
-                //format!("{}/{}/AUTH/Authentication succeeded./{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, Self::CASP_SUFFIX)
-                Self::build_ok_response("AUTH".to_string(), None, database_type)
+                Self::build_ok_response("AUTH".to_string(), None, None)
             }
+            QueryResponseType::CLEAR_OK => {
+                Self::build_ok_response("CLEAR".to_string(), None, None)
+            },
+            QueryResponseType::LEN_OK(length) => {
+                Self::build_ok_response("LEN".to_string(), Some(length.to_string()), None)
+            },
+            QueryResponseType::PING_OK => {
+                Self::build_ok_response("PING".to_string(), Some("PONG".to_string()), None)
+            },
         }
     }
 
@@ -196,6 +211,33 @@ mod tests {
             &DatabaseType::Float
         );
         assert_eq!(response, "CASP/OK/AUTH/\n")
+    }
+
+    #[test]
+    fn test_clear() {
+        let response = QueryResponse::ok(
+            QueryResponseType::CLEAR_OK,
+            &DatabaseType::Bool
+        );
+        assert_eq!(response, "CASP/OK/CLEAR/\n")
+    }
+
+    #[test]
+    fn test_len() {
+        let response = QueryResponse::ok(
+            QueryResponseType::LEN_OK(3),
+            &DatabaseType::Json
+        );
+        assert_eq!(response, "CASP/OK/LEN/3/\n")
+    }
+
+    #[test]
+    fn test_ping() {
+        let response = QueryResponse::ok(
+            QueryResponseType::PING_OK,
+            &DatabaseType::Str
+        );
+        assert_eq!(response, "CASP/OK/PING/PONG/\n")
     }
 
     #[test]

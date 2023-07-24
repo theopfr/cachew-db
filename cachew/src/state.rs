@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, BTreeMap};
 use std::net::SocketAddr;
 
 use crate::auth_error;
@@ -69,7 +69,10 @@ impl State {
             QueryRequest::DEL_MANY(keys) => self.db.del_many(keys),
             QueryRequest::SET(key_value_pair) => self.db.set(&key_value_pair.key, key_value_pair.value),
             QueryRequest::SET_MANY(key_value_pairs) => self.db.set_many(key_value_pairs),
-            QueryRequest::AUTH(password) => self.authenticate(address, &password)
+            QueryRequest::AUTH(password) => self.authenticate(address, &password),
+            QueryRequest::CLEAR => self.db.clear(),
+            QueryRequest::LEN => self.db.len(),
+            QueryRequest::PING => Ok(QueryResponseType::PING_OK),
         }
     }
 }
@@ -149,6 +152,15 @@ mod tests {
         let response_del_range = state.execute_request(client_address, QueryRequest::DEL_RANGE { key_lower: "key2".to_string(), key_upper: "key5".to_string() });
         assert_eq!(response_del_range, Ok(QueryResponseType::DEL_RANGE_OK));    
         
+        let response_clear = state.execute_request(client_address, QueryRequest::CLEAR);
+        assert_eq!(response_clear, Ok(QueryResponseType::CLEAR_OK));
+
+        let response_len = state.execute_request(client_address, QueryRequest::LEN);
+        assert_eq!(response_len, Ok(QueryResponseType::LEN_OK(0)));
+
+        let response_ping = state.execute_request(client_address,QueryRequest::PING);
+        assert_eq!(response_ping, Ok(QueryResponseType::PING_OK));
+
     }
 
 }

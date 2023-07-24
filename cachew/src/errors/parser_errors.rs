@@ -10,7 +10,8 @@ pub enum ParserErrorType {
     UnknownQueryOperation(String),
     WrongValueType(String),
     WrongAuthentication,
-    StringQuotesNotFound
+    StringQuotesNotFound,
+    UnexpectedParameters(String)
 }
 
 #[derive(Debug)]
@@ -32,6 +33,7 @@ impl fmt::Display for ParserError {
             ParserErrorType::WrongValueType(db_type) => write!(f, "'wrongValueType': The value doesn't match the database type '{}'.", db_type),
             ParserErrorType::WrongAuthentication => write!(f, "'wrongAuthentication': Couldn't read password. Expected: 'AUTH <password>'."),
             ParserErrorType::StringQuotesNotFound => write!(f, "'stringQuotesNotFound': Expected double quotes around strings."),
+            ParserErrorType::UnexpectedParameters(parameters) => write!(f, "'unexpectedParameters': The command '{}' doesn't take any parameters.", parameters),
         }
     }
 }

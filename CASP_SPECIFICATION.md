@@ -48,7 +48,7 @@ Each request and response starts with the prefix ``CASP`` and ends with a ``\n``
 ... *type* is one of: 
 ``STR``, ``INT``, ``FLOAT``, ``BOOL``, ``JSON``
 ... *cmd. type* is one of the command identifiers:
-``AUTH``, ``SET``, ``SET MANY``, ``GET``, ``GET MANY``, ``GET RANGE``, ``DEL``, ``DEL MANY``, ``DEL RANGE``
+``AUTH``, ``SET``, ``GET``, etc.
 
 #### Examples:
 - ``CASP/OK/AUTH/Authentication succeeded./\n``

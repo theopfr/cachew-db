@@ -201,9 +201,14 @@ fn parse_auth(password: &str) -> Result<QueryRequest, String> {
     }
 
     return Ok(QueryRequest::AUTH(password.to_owned()));
-
 }
 
+fn parse_single_command<'a>(request: &'a str, expected_command: &'a str, query_request: QueryRequest<'a>) -> Result<QueryRequest<'a>, String> {
+    if request.len() > expected_command.len() {
+        return parser_error!(ParserErrorType::UnexpectedParameters(expected_command.to_string()));
+    }
+    Ok(query_request)
+}
 
 
 /// Parses a query string into a QueryRequest.
@@ -225,6 +230,15 @@ pub fn parse<'a>(request: &'a str, database_type: &DatabaseType) -> Result<Query
     }
     else if request.starts_with("AUTH ") {
         return parse_auth(request.strip_prefix("AUTH ").unwrap());
+    }
+    else if request.starts_with("CLEAR") {
+        return parse_single_command(request, "CLEAR", QueryRequest::CLEAR);
+    }
+    else if request.starts_with("LEN") {
+        return parse_single_command(request, "LEN", QueryRequest::LEN);
+    }
+    else if request.starts_with("PING") {
+        return parse_single_command(request, "PING", QueryRequest::PING);
     }
 
     parser_error!(ParserErrorType::UnknownQueryOperation(request.to_string()))
@@ -395,6 +409,23 @@ mod tests {
 
         let failed_auth_request = parse_auth("pass word 123");
         assert_eq!(failed_auth_request, parser_error!(ParserErrorType::WrongAuthentication));
+    }
+
+    // Unit tests for the `parse_single_command` function:
+
+    #[test]
+    fn test_parse_single_command() {
+        let clear_request = parse_single_command("CLEAR", "CLEAR", QueryRequest::CLEAR);
+        assert_eq!(clear_request, Ok(QueryRequest::CLEAR));
+
+        let len_request = parse_single_command("LEN", "LEN", QueryRequest::LEN);
+        assert_eq!(len_request, Ok(QueryRequest::LEN));
+
+        let ping_request = parse_single_command("PING", "PING", QueryRequest::PING);
+        assert_eq!(ping_request, Ok(QueryRequest::PING));
+
+        let failed_request = parse_single_command("CLEAR NOW", "CLEAR", QueryRequest::PING);
+        assert_eq!(failed_request, parser_error!(ParserErrorType::UnexpectedParameters("CLEAR".to_string())));
     }
 
     // Unit tests for the `parse` function:

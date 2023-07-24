@@ -197,6 +197,15 @@ impl Database {
         }
         Ok(QueryResponseType::SET_MANY_OK)
     }
+
+    pub fn clear(&mut self) -> Result<QueryResponseType, String> {
+        self.storage = BTreeMap::new();
+        Ok(QueryResponseType::CLEAR_OK)
+    }
+
+    pub fn len(&mut self) -> Result<QueryResponseType, String> {
+        Ok(QueryResponseType::LEN_OK(self.storage.len()))
+    }
 }
 
 
@@ -383,4 +392,35 @@ mod tests {
         ]);
         assert_eq!(response, database_error!(DatabaseErrorType::WrongValueType));
     }
+
+    #[test]
+    fn test_clear() {
+        let mut database: database::Database = database::Database::new(DatabaseType::Str);
+
+        // set and get a key to check
+        let _ = database.set("key", ValueType::Int(1));
+        let response = database.clear();
+        assert_eq!(response, Ok(database::QueryResponseType::CLEAR_OK));
+
+        assert_eq!(database.storage.len(), 0);
+    }
+
+    #[test]
+    fn test_len() {
+        let mut database: database::Database = database::Database::new(DatabaseType::Int);
+
+        let _ = database.set_many(vec![
+            KeyValuePair { key: "key1".to_owned(), value: ValueType::Int(1) },
+            KeyValuePair { key: "key2".to_owned(), value: ValueType::Int(2) },
+            KeyValuePair { key: "key3".to_owned(), value: ValueType::Int(3) },
+        ]);
+
+        let response = database.len();
+        assert_eq!(response, Ok(database::QueryResponseType::LEN_OK(3)));
+
+        let _ = database.clear();
+        let response = database.len();
+        assert_eq!(response, Ok(database::QueryResponseType::LEN_OK(0)));
+    }
+
 }
