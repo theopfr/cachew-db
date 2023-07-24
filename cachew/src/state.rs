@@ -73,6 +73,7 @@ impl State {
             QueryRequest::CLEAR => self.db.clear(),
             QueryRequest::LEN => self.db.len(),
             QueryRequest::PING => Ok(QueryResponseType::PING_OK),
+            QueryRequest::EXISTS(key) => self.db.exists(&key),
         }
     }
 }
@@ -142,6 +143,9 @@ mod tests {
         assert_eq!(response_get_range, Ok(QueryResponseType::GET_RANGE_OK(vec![
             ValueType::Str("value2".to_string()), ValueType::Str("value3".to_string()), ValueType::Str("value4".to_string())
         ])));
+
+        let response_ping = state.execute_request(client_address,QueryRequest::EXISTS("key2".to_owned()));
+        assert_eq!(response_ping, Ok(QueryResponseType::EXISTS_OK(true)));
         
         let response_del = state.execute_request(client_address, QueryRequest::DEL("key1".to_string()));
         assert_eq!(response_del, Ok(QueryResponseType::DEL_OK));
@@ -160,7 +164,6 @@ mod tests {
 
         let response_ping = state.execute_request(client_address,QueryRequest::PING);
         assert_eq!(response_ping, Ok(QueryResponseType::PING_OK));
-
     }
 
 }

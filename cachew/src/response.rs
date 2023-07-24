@@ -91,6 +91,9 @@ impl QueryResponse {
             QueryResponseType::PING_OK => {
                 Self::build_ok_response("PING".to_string(), Some("PONG".to_string()), None)
             },
+            QueryResponseType::EXISTS_OK(exists) => {
+                Self::build_ok_response("EXISTS".to_string(), Some(exists.to_string()), None)
+            }
         }
     }
 
@@ -238,6 +241,21 @@ mod tests {
             &DatabaseType::Str
         );
         assert_eq!(response, "CASP/OK/PING/PONG/\n")
+    }
+
+    #[test]
+    fn test_exists() {
+        let response = QueryResponse::ok(
+            QueryResponseType::EXISTS_OK(true),
+            &DatabaseType::Str
+        );
+        assert_eq!(response, "CASP/OK/EXISTS/true/\n");
+
+        let response = QueryResponse::ok(
+            QueryResponseType::EXISTS_OK(false),
+            &DatabaseType::Str
+        );
+        assert_eq!(response, "CASP/OK/EXISTS/false/\n")
     }
 
     #[test]

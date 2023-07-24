@@ -24,7 +24,8 @@ pub enum QueryRequest<'a> {
     AUTH(String),
     CLEAR,
     LEN,
-    PING
+    PING,
+    EXISTS(String)
 }
 
 
@@ -63,7 +64,8 @@ pub enum QueryResponseType {
     AUTH_OK,
     CLEAR_OK,
     LEN_OK(usize),
-    PING_OK
+    PING_OK,
+    EXISTS_OK(bool)
 }
 
 

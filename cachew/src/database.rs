@@ -206,6 +206,10 @@ impl Database {
     pub fn len(&mut self) -> Result<QueryResponseType, String> {
         Ok(QueryResponseType::LEN_OK(self.storage.len()))
     }
+
+    pub fn exists(&self, key: &str) -> Result<QueryResponseType, String> {
+        Ok(QueryResponseType::EXISTS_OK(self.storage.get(key).is_some()))
+    }
 }
 
 
@@ -421,6 +425,19 @@ mod tests {
         let _ = database.clear();
         let response = database.len();
         assert_eq!(response, Ok(database::QueryResponseType::LEN_OK(0)));
+    }
+
+    #[test]
+    fn test_exists() {
+        let mut database: database::Database = database::Database::new(DatabaseType::Float);
+
+        let _ = database.set("key", ValueType::Float(-99.99));
+
+        let response = database.exists("key");
+        assert_eq!(response, Ok(database::QueryResponseType::EXISTS_OK(true)));
+
+        let response = database.exists("notAKey");
+        assert_eq!(response, Ok(database::QueryResponseType::EXISTS_OK(false)));
     }
 
 }

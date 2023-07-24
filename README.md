@@ -26,10 +26,12 @@
 | **DEL MANY** {key} {key} ... | Delete multiple key value pairs. | DEL MANY key1 key2 key3 |
 | **DEL RANGE** {lower-key} {upper-key} | Delete a range of key value pairs. | DEL RANGE aKey zKey |
 | **CLEAR** | Removes all entries in the database. | CLEAR |
-| **LEN** | Returns the amount of entries in the database. *todo* | LEN |
-| **EXISTS** {key} | Returns a bool signaling if a key exists in the database. *todo* | EXSITS key |
-| **PING** | Answers with "PONG" (used to check if the server is running). *todo* | PING |
+| **LEN** | Returns the amount of entries in the database.| LEN |
+| **EXISTS** {key} | Returns a bool signaling if a key exists in the database. | EXSITS key |
+| **PING** | Answers with "PONG" (used to check if the server is running). | PING |
 
+### :memo: Keys:
+Key can consist of any characters expect spaces (" ") or commata (","), unless they key is encapsulated inside quotes. For example ``?939__.`` and ``"key one"`` are a valid keys.
 
 ### :memo: Types:
 Supported types are:

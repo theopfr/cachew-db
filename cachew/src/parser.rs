@@ -203,6 +203,19 @@ fn parse_auth(password: &str) -> Result<QueryRequest, String> {
     return Ok(QueryRequest::AUTH(password.to_owned()));
 }
 
+
+fn parse_exists(query: &str) -> Result<QueryRequest, String> {
+    if query.contains(',') {
+        return parser_error!(ParserErrorType::UnexpectedCharacter(",".to_string()));
+    }
+    if split_whitespaces(query).len() > 1 {
+        return parser_error!(ParserErrorType::UnexpectedCharacter(" ".to_string()));
+    }
+
+    return Ok(QueryRequest::EXISTS(query.to_owned()));
+}
+
+
 fn parse_single_command<'a>(request: &'a str, expected_command: &'a str, query_request: QueryRequest<'a>) -> Result<QueryRequest<'a>, String> {
     if request.len() > expected_command.len() {
         return parser_error!(ParserErrorType::UnexpectedParameters(expected_command.to_string()));
@@ -240,7 +253,9 @@ pub fn parse<'a>(request: &'a str, database_type: &DatabaseType) -> Result<Query
     else if request.starts_with("PING") {
         return parse_single_command(request, "PING", QueryRequest::PING);
     }
-
+    else if request.starts_with("EXISTS ") {
+        return parse_exists(request.strip_prefix("EXISTS ").unwrap());
+    }
     parser_error!(ParserErrorType::UnknownQueryOperation(request.to_string()))
 }
 
@@ -426,6 +441,17 @@ mod tests {
 
         let failed_request = parse_single_command("CLEAR NOW", "CLEAR", QueryRequest::PING);
         assert_eq!(failed_request, parser_error!(ParserErrorType::UnexpectedParameters("CLEAR".to_string())));
+    }
+
+    // Unit tests for the `parse_exists` function:
+
+    #[test]
+    fn test_parse_exists() {
+        let exists_request = parse_exists("key");
+        assert_eq!(exists_request, Ok(QueryRequest::EXISTS("key".to_string())));
+
+        let failed_exists_request = parse_exists("key1,key2");
+        assert_eq!(failed_exists_request, parser_error!(ParserErrorType::UnexpectedCharacter(",".to_string())));
     }
 
     // Unit tests for the `parse` function:
