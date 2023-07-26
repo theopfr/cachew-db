@@ -256,6 +256,10 @@ pub fn parse<'a>(request: &'a str, database_type: &DatabaseType) -> Result<Query
     else if request.starts_with("EXISTS ") {
         return parse_exists(request.strip_prefix("EXISTS ").unwrap());
     }
+    else if request.starts_with("SHUTDOWN") {
+        return parse_single_command(request, "SHUTDOWN", QueryRequest::SHUTDOWN);
+    }
+
     parser_error!(ParserErrorType::UnknownQueryOperation(request.to_string()))
 }
 

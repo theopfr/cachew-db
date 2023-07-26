@@ -7,11 +7,38 @@
 ###### ⚠️ CachewDB is still in development!
 
 ### :memo: Features:
-- in-memory, non-persistant -> therefore fast
-- uses a B-Tree data structure to store data ordered by keys
-- allows only one value type per instance
+- cached / in-memory, non-persistant -> therefore fast
+- uses a b-tree map to store data ordered by keys
+- same type for all database values
 - simple password authentication
 - custom socket protocol for communication (_CASP_: Cashew Socket Protocol)
+- graceful shutdown
+
+### :memo: Running CachewDB:
+###### CachewDB is not ready for production and hasn't even got an implemented client, but you can play around with it anyways using netcat.
+
+##### 1. Clone this repository.
+```bash
+git clone
+```
+
+##### 2. Build using Cargo:
+```bash
+cargo build
+```
+
+##### 5. Run using Cargo:
+When running CachewDB, you have to specifiy which data type it should store. You can do so by using the ``--db-type`` (short: ``-t``) flag like this:
+```bash
+cargo run -- --db-type STR     # see the "Types" section below to see all possible types
+```
+Or, instead you can specify the type using the environment variable ``CACHEW_DB_TYPE``:
+```bash
+export CACHEW_DB_TYPE="STR"
+cargo run
+```
+
+The server now runs on ``127.0.0.1:8080``.
 
 ### :memo: Commands:
 | command | description | example |

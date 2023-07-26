@@ -13,19 +13,15 @@ impl QueryResponse {
     const CASP_SUFFIX: &str = "\n";
     const CASP_OK_INDENTIFIER: &str = "OK";
     const CASP_ERROR_INDENTIFIER: &str = "ERROR";
+    const CASP_WARN_INDENTIFIER: &str = "WARN";
 
     fn build_ok_response(query_identifier: String, content: Option<String>, database_type: Option<&DatabaseType>) -> String {
         match (content, database_type) {
-            (None, None) => return format!("{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, Self::CASP_SUFFIX),
-            (Some(content), None) => return format!("{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, content, Self::CASP_SUFFIX),
-            (Some(content), Some(database_type)) => return format!("{}/{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, database_type, query_identifier, content, Self::CASP_SUFFIX),
-            (None, Some(database_type)) => return format!("{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, database_type, query_identifier, Self::CASP_SUFFIX),
+            (None, None) => format!("{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, Self::CASP_SUFFIX),
+            (Some(content), None) => format!("{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, content, Self::CASP_SUFFIX),
+            (Some(content), Some(database_type)) => format!("{}/{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, database_type, query_identifier, content, Self::CASP_SUFFIX),
+            (None, Some(database_type)) => format!("{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, database_type, query_identifier, Self::CASP_SUFFIX),
         }
-
-        /*match content {
-            Some(content) => format!("{}/{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, database_type, query_identifier, content, Self::CASP_SUFFIX),
-            None => format!("{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, Self::CASP_SUFFIX)
-        }*/
     }
 
     fn handle_value_types(value: &ValueType) -> String {
@@ -94,11 +90,18 @@ impl QueryResponse {
             QueryResponseType::EXISTS_OK(exists) => {
                 Self::build_ok_response("EXISTS".to_string(), Some(exists.to_string()), None)
             }
+            QueryResponseType::SHUTDOWN_OK => {
+                Self::build_ok_response("SHUTDOWN".to_string(), None, None)
+            }
         }
     }
 
     pub fn error(error: &str) -> String {
         format!("{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_ERROR_INDENTIFIER, error, Self::CASP_SUFFIX)
+    }
+
+    pub fn warn(message: &str) -> String {
+        format!("{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_WARN_INDENTIFIER, message, Self::CASP_SUFFIX)
     }
 }
 

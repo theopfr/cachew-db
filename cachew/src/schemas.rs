@@ -25,7 +25,8 @@ pub enum QueryRequest<'a> {
     CLEAR,
     LEN,
     PING,
-    EXISTS(String)
+    EXISTS(String),
+    SHUTDOWN
 }
 
 
@@ -37,18 +38,6 @@ pub enum ValueType {
     Bool(bool),
     Json(String)
 }
-
-/*impl fmt::Display for ValueType {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            ValueType::Str(value) => write!(f, "{}", value),
-            ValueType::Int(value) => write!(f, "{}", value),
-            ValueType::Float(value) => write!(f, "{}", value),
-            ValueType::Bool(value) => write!(f, "{}", value),
-            ValueType::Json(value) => write!(f, "{}", value),
-        }
-    }
-}*/
 
 
 #[derive(Debug, PartialEq)]
@@ -65,11 +54,12 @@ pub enum QueryResponseType {
     CLEAR_OK,
     LEN_OK(usize),
     PING_OK,
-    EXISTS_OK(bool)
+    EXISTS_OK(bool),
+    SHUTDOWN_OK
 }
 
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Debug)]
 pub enum DatabaseType {
     Str,
     Int,
@@ -89,3 +79,4 @@ impl fmt::Display for DatabaseType {
         }
     }
 }
+

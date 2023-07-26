@@ -1,5 +1,10 @@
 use std::collections::{HashMap, BTreeMap};
 use std::net::SocketAddr;
+use std::time::{Duration, self};
+use std::thread::{sleep, self};
+
+use log::{warn, info};
+use tokio::sync::broadcast;
 
 use crate::auth_error;
 use crate::schemas::{DatabaseType, QueryRequest, QueryResponseType};
@@ -12,7 +17,9 @@ pub struct State {
     pub db: Database,
     pub auth_table: HashMap<String, bool>,
     pub password: String,
-    pub database_type: DatabaseType
+    pub database_type: DatabaseType,
+    pub shutdown_tx: broadcast::Sender<()>,
+    pub shutdown_rx: broadcast::Receiver<()>
 }
 
 impl State {
@@ -20,11 +27,15 @@ impl State {
         let db: Database =  Database::new(database_type);
         let auth_table: HashMap<String, bool> = HashMap::new();
 
+        let (shutdown_tx, shutdown_rx) = broadcast::channel::<()>(1);
+
         Self {
             db,
             auth_table,
             password,
-            database_type
+            database_type,
+            shutdown_tx,
+            shutdown_rx
         }
     }
 
@@ -74,7 +85,24 @@ impl State {
             QueryRequest::LEN => self.db.len(),
             QueryRequest::PING => Ok(QueryResponseType::PING_OK),
             QueryRequest::EXISTS(key) => self.db.exists(&key),
+            QueryRequest::SHUTDOWN => Ok(QueryResponseType::SHUTDOWN_OK)
         }
+    }
+
+    pub async fn signal_shutdown(&self) {
+        let _ = self.shutdown_tx.send(());
+        tokio::time::sleep(Duration::from_secs(1)).await;
+    }
+
+    pub async fn request_shutdown(&self) {
+        warn!("Received SHUTDOWN request. Shutting down gracefully...");
+        self.signal_shutdown().await;
+
+        info!("Graceful shutdown completed.");
+    }
+
+    pub fn subscribe_shutdown(&self) -> broadcast::Receiver<()> {
+        self.shutdown_rx.resubscribe()
     }
 }
 
