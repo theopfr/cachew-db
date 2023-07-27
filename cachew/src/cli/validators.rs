@@ -70,7 +70,6 @@ pub fn validate_password(password: String) -> String {
         error!("{}", error_message);
         panic!("{}", error_message);
     }
-
     password
 }
 

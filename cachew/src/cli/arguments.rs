@@ -97,6 +97,73 @@ pub fn get_argument<T>(cli_argument: Option<String>, env_var: &str, validator: f
 mod tests {
     use super::*;
 
-    // TODO test 'get_argument'
+    #[test]
+    fn test_get_argument() {
+        // test database type provided by the CLI and ENV variable
+        let database_type_cli = get_argument::<DatabaseType>(Some("STR".to_string()), "CACHEW_DB_TYPE", validate_database_type, None);
+        assert_eq!(database_type_cli, DatabaseType::Str);
+
+        std::env::set_var("CACHEW_DB_TYPE", "INT");
+
+        let database_type_env = get_argument::<DatabaseType>(None, "CACHEW_DB_TYPE", validate_database_type, None);
+        assert_eq!(database_type_env, DatabaseType::Int);
+
+
+        // test password provided by the CLI and ENV variable
+        let password_cli = get_argument::<String>(Some("Valid%Password123".to_string()), "CACHEW_DB_PASSWORD", validate_password, None);
+        assert_eq!(password_cli, "Valid%Password123".to_string());
+
+        std::env::set_var("CACHEW_DB_PASSWORD", "Valid%Password123");
+
+        let password_env = get_argument::<String>(None, "CACHEW_DB_PASSWORD", validate_password, None);
+        assert_eq!(password_env, "Valid%Password123".to_string());
+
+        // test host provided by the CLI and ENV variable
+        let host_cli = get_argument::<String>(Some("127.0.0.1".to_string()), "CACHEW_DB_HOST", |x| x, Some("127.0.0.1".to_string()));
+        assert_eq!(host_cli, "127.0.0.1".to_string());
+
+        std::env::set_var("CACHEW_DB_HOST", "127.0.0.1");
+
+        let host_env = get_argument::<String>(None, "CACHEW_DB_HOST", |x| x, Some("127.0.0.1".to_string()));
+        assert_eq!(host_env, "127.0.0.1".to_string());
+
+
+        // test host provided by the CLI and ENV variable
+        let port_cli = get_argument::<String>(Some("5432".to_string()), "CACHEW_DB_PORT", |x| x, Some("8080".to_string()));
+        assert_eq!(port_cli, "5432".to_string());
+
+        std::env::set_var("CACHEW_DB_PORT", "5432");
+
+        let port_env = get_argument::<String>(None, "CACHEW_DB_PORT", |x| x, Some("8080".to_string()));
+        assert_eq!(port_env, "5432".to_string());
+    }
+
+    #[test]
+    fn test_get_default_host() {
+        std::env::remove_var("CACHEW_DB_HOST");
+        let host_env = get_argument::<String>(None, "CACHEW_DB_HOST", |x| x, Some("0.0.0.0".to_string()));
+        assert_eq!(host_env, "0.0.0.0".to_string());
+    }
+
+    #[test]
+    fn test_get_default_port() {
+        std::env::remove_var("CACHEW_DB_PORT");
+        let port_env = get_argument::<String>(None, "CACHEW_DB_PORT", |x| x, Some("8080".to_string()));
+        assert_eq!(port_env, "8080".to_string());
+    }
+
+    #[test]
+    #[should_panic(expected = "Environment variable 'CACHEW_DB_TYPE' is not set and no according flag was provided.")]
+    fn test_missing_database_type() {
+        std::env::remove_var("CACHEW_DB_TYPE");
+        let _ = get_argument::<DatabaseType>(None, "CACHEW_DB_TYPE", validate_database_type, None);
+    }
+
+    #[test]
+    #[should_panic(expected = "Environment variable 'CACHEW_DB_PASSWORD' is not set and no according flag was provided.")]
+    fn test_missing_password() {
+        std::env::remove_var("CACHEW_DB_PASSWORD");
+        let _ = get_argument::<String>(None, "CACHEW_DB_PASSWORD", validate_password, None);
+    }
     
 }
