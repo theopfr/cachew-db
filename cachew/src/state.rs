@@ -1,9 +1,5 @@
-use std::collections::{HashMap, BTreeMap};
-use std::net::SocketAddr;
-use std::time::{Duration, self};
-use std::thread::{sleep, self};
-
-use log::{warn, info};
+use std::collections::{HashMap};
+use std::time::{Duration};
 use tokio::sync::broadcast;
 
 use crate::auth_error;
@@ -94,14 +90,7 @@ impl State {
         tokio::time::sleep(Duration::from_secs(1)).await;
     }
 
-    pub async fn request_shutdown(&self) {
-        warn!("Received SHUTDOWN request. Shutting down gracefully...");
-        self.signal_shutdown().await;
-
-        info!("Graceful shutdown completed.");
-    }
-
-    pub fn subscribe_shutdown(&self) -> broadcast::Receiver<()> {
+    pub fn subscribe_shutdown_channel(&self) -> broadcast::Receiver<()> {
         self.shutdown_rx.resubscribe()
     }
 }

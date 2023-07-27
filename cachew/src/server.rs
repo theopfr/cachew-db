@@ -116,15 +116,12 @@ async fn handle_client(mut socket: TcpStream, address: SocketAddr, state_clone: 
 
 
 
-pub async fn serve(state: State) {
-    const HOST: &str = "127.0.0.1";
-    const PORT: &str = "8080";
-
-    let listener = TcpListener::bind(format!("{}:{}", HOST, PORT)).await;
+pub async fn serve(state: State, host: &str, port: &str) {
+    let listener = TcpListener::bind(format!("{}:{}", host, port)).await;
 
     match listener {
         Ok(listener) => {
-            info!("Started CachewDB server. Listening on {}:{}.", HOST, PORT);
+            info!("Started CachewDB server. Listening on {}:{}.", host, port);
             let state: Arc<Mutex<State>> = Arc::new(Mutex::new(state));
             let state_clone = Arc::clone(&state);
 
@@ -149,7 +146,7 @@ pub async fn serve(state: State) {
                 info!("Accepted new client ({}).", address);
 
                 let state_clone = Arc::clone(&state);
-                let shutdown_rx_clone =  state_clone.lock().await.subscribe_shutdown();
+                let shutdown_rx_clone =  state_clone.lock().await.subscribe_shutdown_channel();
                 tokio::spawn(handle_client(socket, address, state_clone, shutdown_rx_clone));
             }
         }

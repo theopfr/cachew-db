@@ -9,10 +9,9 @@ mod cli;
 #[macro_use]
 mod errors;
 
-use log::{info};
-use schemas::{DatabaseType};
 use state::State;
-
+use cli::arguments::{CachewDbArgs, get_cachew_db_args};
+use log::{info};
 
 
 #[tokio::main]
@@ -23,11 +22,10 @@ async fn main() {
 
     info!("Starting up CachewDB database.");
 
-    let cli_args: cli::Args = cli::get_cli_args();
-    let database_type: DatabaseType = cli::get_database_type(cli_args.database_type);
+    let cachew_db_args: CachewDbArgs = get_cachew_db_args();
 
-    info!("Initializing b-tree storage of type '{}'.", database_type);
-    let state: State = State::new(database_type, "pwd".to_string());
+    info!("Initializing b-tree storage of type '{}'.", cachew_db_args.database_type);
+    let state: State = State::new(cachew_db_args.database_type, cachew_db_args.password);
 
-    server::serve(state).await;
+    server::serve(state, &cachew_db_args.host, &cachew_db_args.port).await;
 }
