@@ -72,7 +72,7 @@ To start the CachewDB server you have to run ``cargo run`` or the binary ``./tar
 | **LEN** | Returns the amount of entries in the database.| LEN |
 | **EXISTS** {key} | Returns a bool signaling if a key exists in the database. | EXSITS key |
 | **PING** | Answers with "PONG" (used to check if the server is running). | PING |
-
+| **SHUTDOWN** | Gracefully shutdowns the database. | PING |
 ---
 
 ### :memo: Keys:
@@ -90,6 +90,17 @@ Supported types are:
 | **BOOL** | Either ``true`` or ``false``. |
 | **JSON** | Behaves the same as strings (must be encapsulated with ``"``). |
 
+---
 
 ### :memo: CASP protocol specification:
 For the specification of the custom protocol used for communicating with a CachewDB instance check this document: [CASP_SPECIFICATION.md](./CASP_SPECIFICATION.md)
+
+
+---
+
+#### Todo
+- [x] add graceful shutdown
+- [x] add command line flag handler
+- [ ] built CLI client
+- [ ] add persistance
+- [ ] add INCR/DECR commands for INT type
