@@ -13,6 +13,9 @@
 - simple password authentication
 - custom socket protocol for communication (_CASP_: Cashew Socket Protocol)
 - graceful shutdown
+- concurrent client handling
+
+---
 
 ### :memo: Running CachewDB:
 ###### CachewDB is not ready for production and hasn't even got an implemented client, but you can play around with it anyways using netcat.
@@ -24,21 +27,34 @@ git clone
 
 ##### 2. Build using Cargo:
 ```bash
-cargo build
+cargo build --release
 ```
 
 ##### 5. Run using Cargo:
-When running CachewDB, you have to specifiy which data type it should store. You can do so by using the ``--db-type`` (short: ``-t``) flag like this:
-```bash
-cargo run -- --db-type STR     # see the "Types" section below to see all possible types
-```
-Or, instead you can specify the type using the environment variable ``CACHEW_DB_TYPE``:
-```bash
-export CACHEW_DB_TYPE="STR"
-cargo run
-```
+To start the CachewDB server you have to run ``cargo run`` or the binary ``./target/release/cachew``. You have to specify the following arguments either with command line flags or using environment variables:
 
-The server now runs on ``127.0.0.1:8080``.
+| flag | short | description | ENV |
+|:-------|:----------|:----------|:----------|
+| --db-type | -d | Sets the data type (check possible types in the "Types" section). | CACHEW_DB_TYPE |
+| --password | -p | Sets the password for the database. | CACHEW_DB_PASSWORD |
+| --host | n/a | The host address the server will be running on (optional, default: ``127.0.0.1``). | CACHEW_DB_HOST |
+| --db-type | n/a | The port the server will be accessible on (optional, default: ``8080``). | CACHEW_DB_PORT |
+
+##### Examples:
+1. Using flags for db-type and password and default host and port.
+   ```bash
+   cargo run -- -t STR -p Str0ongPa??word     # host will default to 127.0.0.1 and port to 8080
+   ```
+2. Using ENV variables to specify all arguments:
+   ```bash
+   export CACHEW_DB_TYPE="STR"
+   export CACHEW_DB_PASSWORD="Str0ongPa??word"
+   export CACHEW_DB_HOST="127.0.0.1"
+   export CACHEW_DB_PORT="2345"
+   cargo run
+   ```
+
+---
 
 ### :memo: Commands:
 | command | description | example |
@@ -57,8 +73,12 @@ The server now runs on ``127.0.0.1:8080``.
 | **EXISTS** {key} | Returns a bool signaling if a key exists in the database. | EXSITS key |
 | **PING** | Answers with "PONG" (used to check if the server is running). | PING |
 
+---
+
 ### :memo: Keys:
 Key can consist of any characters expect spaces (" ") or commata (","), unless they key is encapsulated inside quotes. For example ``?939__.`` and ``"key one"`` are a valid keys.
+
+---
 
 ### :memo: Types:
 Supported types are:
