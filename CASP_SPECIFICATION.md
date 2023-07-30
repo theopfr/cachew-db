@@ -30,9 +30,9 @@ Each request and response starts with the prefix ``CASP`` and ends with a ``\n``
 
 ### :arrow_right: Response specification:
 #### Response structure for GET requests:
-   | prefix | delim. | status | delim. | type | delim. | cmd. type | delim. | message | delim. | suffix |
+   | prefix | delim. | status | delim. | cmd. type | delim. | type | delim. | value/s | delim. | suffix |
    |:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|:-------:|
-   | CASP | / | OK | / | *type* | / | *cmd. type* | / | *response* | / | \n |
+   | CASP | / | OK | / | *cmd. type* | / | *type* | / | *value/s* | / | \n |
 
 #### Response structure for other requests:
    | prefix | delim. | status | delim. | cmd. type | delim. | suffix |
@@ -57,9 +57,9 @@ Each request and response starts with the prefix ``CASP`` and ends with a ``\n``
 - ``CASP/OK/DEL/\n``
 - ``CASP/OK/DEL MANY/\n``
 - ``CASP/OK/DEL RANGE/\n``
-- ``CASP/OK/INT/GET/-99/\n``
-- ``CASP/OK/STR/GET MANY/"v1","v2""/\n``
-- ``CASP/OK/FLOAT/GET RANGE/0.1, 0.5, 1.99/\n``
+- ``CASP/OK/GET/INT/-99/\n``
+- ``CASP/OK/GET MANY/STR/"v1","v2""/\n``
+- ``CASP/OK/GET RANGE/FLOAT/0.1, 0.5, 1.99/\n``
 - ``CASP/ERROR/Some error message!/\n``
 
 ---
@@ -67,7 +67,7 @@ Each request and response starts with the prefix ``CASP`` and ends with a ``\n``
 ### :mailbox: Response bodies for GET requests:
 As seen before, the value/-s returned from GET / GET MANY / GET RANGE requests are in the following section:
 ```
-CASP/OK/STR/GET/<--HERE-->/\n
+CASP/OK/GET/STR/<--HERE-->/\n
 ```
 
 The following focuses on how to parse the data within the fourth and fifth ``/``.
@@ -129,7 +129,7 @@ The error type (see above), then a specific error type, then a colon and finally
 - ``ProtocolError 'startMarkerNotFound': Expected request to start with 'CASP/'.``
 - ``ProtocolError 'endMarkerNotFound': Expected request to end with '/\n'``
 - ``ParserError 'invalidRange': Expected two keys got 3.``
-- ``ParserError 'unexpectedCharacter': ',' is not allowed in keys.``
+- ``ParserError 'unexpectedCharacter': '/', ',' and spaces are not allowed in keys.``
 - ``ParserError 'invalidKeyValuePair': Expected two parameters (key and value), found 1.``
 - ``ParserError 'unknownQueryOperation': Query 'SER key 10' not recognized.``
 - ``ParserError 'wrongValueType': The value doesn't match the database type.``

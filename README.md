@@ -17,20 +17,14 @@
 
 ---
 
-### :memo: Running CachewDB:
-###### CachewDB is not ready for production and hasn't even got an implemented client, but you can play around with it anyways using netcat.
-
-##### 1. Clone this repository.
+### :memo: Running the CachewDB server:
+##### 1. Build using Cargo:
 ```bash
-git clone
-```
-
-##### 2. Build using Cargo:
-```bash
+cd ./cachew/
 cargo build --release
 ```
 
-##### 5. Run using Cargo:
+##### 2. Run using Cargo:
 To start the CachewDB server you have to run ``cargo run`` or the binary ``./target/release/cachew``. You have to specify the following arguments either with command line flags or using environment variables:
 
 | flag | short | description | ENV |
@@ -53,6 +47,30 @@ To start the CachewDB server you have to run ``cargo run`` or the binary ``./tar
    export CACHEW_DB_PORT="2345"
    cargo run --release
    ```
+
+---
+
+### :memo: Running the CachewDB CLI client:
+
+##### 1. Build using Cargo:
+```bash
+cd ./cli-client/
+cargo build --release
+```
+
+##### 2. Run using Cargo:
+To start the CachewDB CLI client you have to run ``cargo run`` or the binary ``./target/release/cli-client``. You have to specify the following arguments with command line flags:
+
+| flag | description |
+|:-------|:----------|
+| --host | Sets host remote address of the CacheDB server. |
+| --port | Sets the remote port of the CachewDB server. | 
+| --password | Sets the password needed for authenticating on the CachewDB server. |
+
+##### Example:
+```
+cargo run --release -- --host 127.0.0.1 --port 8080 --password Password123#
+```
 
 ---
 
