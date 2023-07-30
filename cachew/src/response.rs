@@ -19,8 +19,8 @@ impl QueryResponse {
         match (content, database_type) {
             (None, None) => format!("{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, Self::CASP_SUFFIX),
             (Some(content), None) => format!("{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, content, Self::CASP_SUFFIX),
-            (Some(content), Some(database_type)) => format!("{}/{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, database_type, query_identifier, content, Self::CASP_SUFFIX),
-            (None, Some(database_type)) => format!("{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, database_type, query_identifier, Self::CASP_SUFFIX),
+            (Some(content), Some(database_type)) => format!("{}/{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, database_type, content, Self::CASP_SUFFIX),
+            (None, Some(database_type)) => format!("{}/{}/{}/{}/{}", Self::CASP_PREFIX, Self::CASP_OK_INDENTIFIER, query_identifier, database_type, Self::CASP_SUFFIX),
         }
     }
 
@@ -117,7 +117,7 @@ mod tests {
             QueryResponseType::GET_OK(ValueType::Str("value".to_string())),
             &DatabaseType::Str
         );
-        assert_eq!(response, "CASP/OK/STR/GET/\"value\"/\n")
+        assert_eq!(response, "CASP/OK/GET/STR/\"value\"/\n")
     }
 
     #[test]
@@ -126,7 +126,7 @@ mod tests {
             QueryResponseType::GET_OK(ValueType::Int(-100)),
             &DatabaseType::Int
         );
-        assert_eq!(response, "CASP/OK/INT/GET/-100/\n")
+        assert_eq!(response, "CASP/OK/GET/INT/-100/\n")
     }
 
     #[test]
@@ -135,7 +135,7 @@ mod tests {
             QueryResponseType::GET_OK(ValueType::Float(0.01)),
             &DatabaseType::Float
         );
-        assert_eq!(response, "CASP/OK/FLOAT/GET/0.01/\n")
+        assert_eq!(response, "CASP/OK/GET/FLOAT/0.01/\n")
     }
 
     #[test]
@@ -144,7 +144,7 @@ mod tests {
             QueryResponseType::GET_RANGE_OK(vec![ValueType::Str("value1".to_string()), ValueType::Str("value2".to_string())]),
             &DatabaseType::Str
         );
-        assert_eq!(response, "CASP/OK/STR/GET RANGE/\"value1\",\"value2\"/\n")
+        assert_eq!(response, "CASP/OK/GET RANGE/STR/\"value1\",\"value2\"/\n")
     }
 
     #[test]
@@ -153,7 +153,7 @@ mod tests {
             QueryResponseType::GET_RANGE_OK(vec![ValueType::Float(0.01), ValueType::Float(0.02), ValueType::Float(0.03)]),
             &DatabaseType::Float
         );
-        assert_eq!(response, "CASP/OK/FLOAT/GET RANGE/0.01,0.02,0.03/\n")
+        assert_eq!(response, "CASP/OK/GET RANGE/FLOAT/0.01,0.02,0.03/\n")
     }
 
     #[test]
@@ -162,7 +162,7 @@ mod tests {
             QueryResponseType::GET_MANY_OK(vec![ValueType::Str("value1".to_string()), ValueType::Str("value2".to_string())]),
             &DatabaseType::Str
         );
-        assert_eq!(response, "CASP/OK/STR/GET MANY/\"value1\",\"value2\"/\n")
+        assert_eq!(response, "CASP/OK/GET MANY/STR/\"value1\",\"value2\"/\n")
     }
 
     #[test]

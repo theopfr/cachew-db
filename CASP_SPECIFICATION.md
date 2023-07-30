@@ -6,7 +6,7 @@ CASP is the custom protocol used for communicating with a CachewDB instance via 
 ---
 
 ### :point_up: In general...:
-Each request and response starts with the prefix ``CASP`` and ends with a ``\n``. All parts (prefix, status, message, etc.) of a CASP request/response are joined by the dilimiter ``/``.
+Each request and response starts with the prefix ``CASP`` and ends with a ``\n``. All parts (prefix, status, message, etc.) of a CASP request/response are joined by the delimiter ``/``.
 
 ---
 

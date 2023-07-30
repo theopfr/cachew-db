@@ -1,8 +1,6 @@
-use log::warn;
 use regex::Regex;
 
 use crate::schemas::{QueryRequest, KeyValuePair, ValueType, DatabaseType};
-
 use crate::{parser_error};
 use crate::errors::parser_errors::{ParserErrorType};
 
@@ -45,8 +43,8 @@ fn parse_many_keys(query_keys: &str) -> Result<Vec<&str>, String> {
 /// # Returns:
 /// An instance of `QueryRequest`, variants: GET, GET_RANGE, GET_MANY or ERROR (if the parse failed).
 fn parse_get(query: &str) -> Result<QueryRequest, String> {
-    if query.contains(',') {
-        return parser_error!(ParserErrorType::UnexpectedCharacter(",".to_string()));
+    if query.contains(',') || query.contains('/') {
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
 
     if query.starts_with("RANGE ") {
@@ -64,7 +62,7 @@ fn parse_get(query: &str) -> Result<QueryRequest, String> {
     }
 
     if split_whitespaces(query).len() > 1 {
-        return parser_error!(ParserErrorType::UnexpectedCharacter(" ".to_string()));
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
 
     Ok(QueryRequest::GET(query.to_owned()))
@@ -79,9 +77,10 @@ fn parse_get(query: &str) -> Result<QueryRequest, String> {
 /// # Returns:
 /// An instance of `QueryRequest`, variants: DEL, DEL_RANGE, DEL_MANY or ERROR (if the parse failed).
 fn parse_del(query: &str) -> Result<QueryRequest, String> {
-    if query.contains(',') {
-        return parser_error!(ParserErrorType::UnexpectedCharacter(",".to_string()));
+    if query.contains(',') || query.contains('/') {
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
+
 
     if query.starts_with("RANGE ") {
         match parse_ranged_keys(query.strip_prefix("RANGE ").unwrap()) {
@@ -98,7 +97,7 @@ fn parse_del(query: &str) -> Result<QueryRequest, String> {
     }
 
     if split_whitespaces(query).len() > 1 {
-        return parser_error!(ParserErrorType::UnexpectedCharacter(" ".to_string()));
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
 
     Ok(QueryRequest::DEL(query.to_owned()))
@@ -168,7 +167,11 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
             let parameters: Vec<&str> = split_whitespaces(&pair);
             if parameters.len() != 2 {
                 return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
-            }            
+            }
+
+            if parameters[0].contains('/') || parameters[0].contains(',') {
+                return parser_error!(ParserErrorType::UnexpectedCharacter);
+            }
 
             let parsed_value: Result<ValueType, String> = parse_set_value(parameters[1], database_type);
             match parsed_value {
@@ -184,6 +187,10 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
     let parameters: Vec<&str> = split_whitespaces(query);
     if parameters.len() != 2 {
         return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
+    }
+
+    if parameters[0].contains('/') || parameters[0].contains(',') {
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
 
     // parse value into the right value type
@@ -205,11 +212,11 @@ fn parse_auth(password: &str) -> Result<QueryRequest, String> {
 
 
 fn parse_exists(query: &str) -> Result<QueryRequest, String> {
-    if query.contains(',') {
-        return parser_error!(ParserErrorType::UnexpectedCharacter(",".to_string()));
+    if query.contains(',') || query.contains('/') {
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
     if split_whitespaces(query).len() > 1 {
-        return parser_error!(ParserErrorType::UnexpectedCharacter(" ".to_string()));
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
 
     return Ok(QueryRequest::EXISTS(query.to_owned()));
@@ -297,7 +304,7 @@ mod tests {
         assert_eq!(get_query, Ok(QueryRequest::GET("\"key one\"".to_string())));
 
         let get_query = parse_get("key0 key1");
-        assert_eq!(get_query, parser_error!(ParserErrorType::UnexpectedCharacter(" ".to_string())))
+        assert_eq!(get_query, parser_error!(ParserErrorType::UnexpectedCharacter))
     }
 
     #[test]
@@ -344,7 +351,7 @@ mod tests {
         assert_eq!(del_query, Ok(QueryRequest::DEL("\"key one\"".to_string())));
 
         let del_query = parse_del("key0 key1");
-        assert_eq!(del_query, parser_error!(ParserErrorType::UnexpectedCharacter(" ".to_string())))
+        assert_eq!(del_query, parser_error!(ParserErrorType::UnexpectedCharacter))
     }
 
     #[test]
@@ -455,7 +462,7 @@ mod tests {
         assert_eq!(exists_request, Ok(QueryRequest::EXISTS("key".to_string())));
 
         let failed_exists_request = parse_exists("key1,key2");
-        assert_eq!(failed_exists_request, parser_error!(ParserErrorType::UnexpectedCharacter(",".to_string())));
+        assert_eq!(failed_exists_request, parser_error!(ParserErrorType::UnexpectedCharacter));
     }
 
     // Unit tests for the `parse` function:
@@ -475,7 +482,7 @@ mod tests {
         assert_eq!(get_many_query, Ok(QueryRequest::GET_MANY(vec!["key0", "key1", "key2"])));
 
         let get_query = parse("GET MANY key0, key1, key2", &DatabaseType::Float);
-        assert_eq!(get_query, parser_error!(ParserErrorType::UnexpectedCharacter(",".to_string())));
+        assert_eq!(get_query, parser_error!(ParserErrorType::UnexpectedCharacter));
 
         let del_query = parse("DEL key", &DatabaseType::Str);
         assert_eq!(del_query, Ok(QueryRequest::DEL("key".to_string())));

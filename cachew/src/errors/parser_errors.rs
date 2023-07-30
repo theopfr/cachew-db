@@ -5,7 +5,7 @@ use std::fmt;
 #[derive(Debug)]
 pub enum ParserErrorType {
     InvalidRange(usize),
-    UnexpectedCharacter(String),
+    UnexpectedCharacter,
     InvalidKeyValuePair(usize),
     UnknownQueryOperation(String),
     WrongValueType(String),
@@ -27,7 +27,7 @@ impl fmt::Display for ParserError {
         write!(f, "ParserError ");
         match &self.error_type {
             ParserErrorType::InvalidRange(num) => write!(f, "'invalidRange': Expected two keys got {}.", num),
-            ParserErrorType::UnexpectedCharacter(char) => write!(f, "'unexpectedCharacter': '{}' is not allowed in keys.", char),
+            ParserErrorType::UnexpectedCharacter => write!(f, "'unexpectedCharacter': '/', ',' and spaces are not allowed in keys."),
             ParserErrorType::InvalidKeyValuePair(num) => write!(f, "'invalidKeyValuePair': Expected two parameters (key and value), found {}.", num),
             ParserErrorType::UnknownQueryOperation(op) => write!(f, "'unknownQueryOperation': Query '{}' not recognized.", op),
             ParserErrorType::WrongValueType(db_type) => write!(f, "'wrongValueType': The value doesn't match the database type '{}'.", db_type),

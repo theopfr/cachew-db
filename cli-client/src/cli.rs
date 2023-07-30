@@ -9,6 +9,9 @@ pub struct CliArgs {
 
     #[arg(long = "port")]
     pub port: String,
+
+    #[arg(long = "password")]
+    pub password: Option<String>,
 }
 
 
