@@ -125,8 +125,8 @@ mod tests {
             is_ok: true, command: Some("GET MANY".to_string()), value: Some("10,20,30".to_string())
         }));
 
-        let parsed_response = parse_response("CASP/OK/LEN/\n");
-        assert_eq!(parsed_response, Ok(ParsedResponse { is_ok: true, command: Some("LEN".to_string()), value: None }));
+        let parsed_response = parse_response("CASP/OK/LEN/10/\n");
+        assert_eq!(parsed_response, Ok(ParsedResponse { is_ok: true, command: Some("LEN".to_string()), value: Some("10".to_string()) }));
 
         let parsed_response = parse_response("CASP/ERROR/An error appeared./\n");
         assert_eq!(parsed_response, Ok(ParsedResponse { is_ok: false, command: None, value: Some("An error appeared.".to_string()) }));
@@ -152,6 +152,9 @@ mod tests {
 
         let parsed_response = parse_response("CASP/OK/GET/\"value/1\"/\n");
         assert_eq!(parsed_response.unwrap_err(), r#"Failed to parse response: Expected GET OK responses to consist of six parts (CASP + OK + <command> + <type> + <value> + \n)."#);
+
+        let parsed_response = parse_response("CASP/OK/EXISTS/\n");
+        assert_eq!(parsed_response.unwrap_err(), r#"Failed to parse response: Expected EXISTS, PING, LEN OK responses to consist of five parts (CASP + OK + <command> + <message> + \n)."#);
 
         let parsed_response = parse_response("CASP/ERROR/\n");
         assert_eq!(parsed_response.unwrap_err(), r#"Failed to parse response: Expected error responses to consist of four parts (CASP + ERROR + message + \n)."#);
