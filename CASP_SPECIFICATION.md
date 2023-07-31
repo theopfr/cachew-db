@@ -129,7 +129,7 @@ The error type (see above), then a specific error type, then a colon and finally
 - ``ProtocolError 'startMarkerNotFound': Expected request to start with 'CASP/'.``
 - ``ProtocolError 'endMarkerNotFound': Expected request to end with '/\n'``
 - ``ParserError 'invalidRange': Expected two keys got 3.``
-- ``ParserError 'unexpectedCharacter': '/', ',' and spaces are not allowed in keys.``
+- ``ParserError 'unexpectedCharacter': commata, slashes and spaces are not allowed in keys.``
 - ``ParserError 'invalidKeyValuePair': Expected two parameters (key and value), found 1.``
 - ``ParserError 'unknownQueryOperation': Query 'SER key 10' not recognized.``
 - ``ParserError 'wrongValueType': The value doesn't match the database type.``

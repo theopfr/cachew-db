@@ -2,8 +2,16 @@ use regex::Regex;
 
 
 #[derive(Debug, PartialEq)]
+pub enum ResponseStatus {
+    OK,
+    WARN,
+    ERROR
+}
+
+
+#[derive(Debug, PartialEq)]
 pub struct ParsedResponse {
-    pub is_ok: bool,
+    pub status: ResponseStatus,
     pub command: Option<String>,
     pub value: Option<String>,
 }
@@ -23,6 +31,7 @@ pub fn parse_response(response: &str) -> Result<ParsedResponse, String> {
     const CASP_PREFIX: &str = "CASP";
     const CASP_SUFFIX: &str = "\n";
     const OK_IDENTIFIER: &str = "OK";
+    const WARN_IDENTIFIER: &str = "WARN";
     const ERROR_IDENTIFIER: &str = "ERROR";
 
 
@@ -52,7 +61,7 @@ pub fn parse_response(response: &str) -> Result<ParsedResponse, String> {
                 }
 
                 Ok(ParsedResponse {
-                    is_ok: true,
+                    status: ResponseStatus::OK,
                     command: Some(response_parts[2].to_string()),
                     value: Some(response_parts[4].to_string()),
                 })
@@ -65,7 +74,7 @@ pub fn parse_response(response: &str) -> Result<ParsedResponse, String> {
                 }
 
                 Ok(ParsedResponse {
-                    is_ok: true,
+                    status: ResponseStatus::OK,
                     command: Some(response_parts[2].to_string()),
                     value: Some(response_parts[3].to_string()),
                 })
@@ -76,23 +85,34 @@ pub fn parse_response(response: &str) -> Result<ParsedResponse, String> {
                 }
     
                 Ok(ParsedResponse {
-                    is_ok: true,
+                    status: ResponseStatus::OK,
                     command: Some(response_parts[2].to_string()),
                     value: None,
                 })
             }
         },
-        ERROR_IDENTIFIER => {
+        WARN_IDENTIFIER => {
             if response_parts.len() != 4 {
-                return Err(r#"Failed to parse response: Expected error responses to consist of four parts (CASP + ERROR + message + \n)."#.to_string());
+                return Err(r#"Failed to parse response: Expected WARN responses to consist of four parts (CASP + WARN + <command> + \n)."#.to_string());
             }
 
             Ok(ParsedResponse {
-                is_ok: false,
+                status: ResponseStatus::WARN,
+                command: Some(response_parts[2].to_string()),
+                value: None,
+            })
+        },
+        ERROR_IDENTIFIER => {
+            if response_parts.len() != 4 {
+                return Err(r#"Failed to parse response: Expected ERROR responses to consist of four parts (CASP + ERROR + message + \n)."#.to_string());
+            }
+
+            Ok(ParsedResponse {
+                status: ResponseStatus::ERROR,
                 command: None,
                 value: Some(response_parts[2].to_string()),
             })
-        }
+        },
         _ => {
             Err("Failed to parse response: No status identifier found (expected one of: OK, ERROR).".to_string())
         }
@@ -118,18 +138,21 @@ mod tests {
     fn test_parse_response() {
         // test success cases
         let parsed_response = parse_response("CASP/OK/SET/\n");
-        assert_eq!(parsed_response, Ok(ParsedResponse { is_ok: true, command: Some("SET".to_string()), value: None }));
+        assert_eq!(parsed_response, Ok(ParsedResponse { status: ResponseStatus::OK, command: Some("SET".to_string()), value: None }));
 
         let parsed_response = parse_response("CASP/OK/GET MANY/INT/10,20,30/\n");
         assert_eq!(parsed_response, Ok(ParsedResponse { 
-            is_ok: true, command: Some("GET MANY".to_string()), value: Some("10,20,30".to_string())
+            ResponseStatus::OK, command: Some("GET MANY".to_string()), value: Some("10,20,30".to_string())
         }));
 
         let parsed_response = parse_response("CASP/OK/LEN/10/\n");
-        assert_eq!(parsed_response, Ok(ParsedResponse { is_ok: true, command: Some("LEN".to_string()), value: Some("10".to_string()) }));
+        assert_eq!(parsed_response, Ok(ParsedResponse { ResponseStatus::OK, command: Some("LEN".to_string()), value: Some("10".to_string()) }));
 
         let parsed_response = parse_response("CASP/ERROR/An error appeared./\n");
-        assert_eq!(parsed_response, Ok(ParsedResponse { is_ok: false, command: None, value: Some("An error appeared.".to_string()) }));
+        assert_eq!(parsed_response, Ok(ParsedResponse { ResponseStatus::ERROR, command: None, value: Some("An error appeared.".to_string()) }));
+
+        let parsed_response = parse_response("CASP/WARN/SHUTDOWN/\n");
+        assert_eq!(parsed_response, Ok(ParsedResponse { ResponseStatus::WARN, command: Some("SHUTDOWN".to_string()), value: None }));
 
         // test failures
         let parsed_response = parse_response("");
@@ -157,6 +180,9 @@ mod tests {
         assert_eq!(parsed_response.unwrap_err(), r#"Failed to parse response: Expected EXISTS, PING, LEN OK responses to consist of five parts (CASP + OK + <command> + <message> + \n)."#);
 
         let parsed_response = parse_response("CASP/ERROR/\n");
-        assert_eq!(parsed_response.unwrap_err(), r#"Failed to parse response: Expected error responses to consist of four parts (CASP + ERROR + message + \n)."#);
+        assert_eq!(parsed_response.unwrap_err(), r#"Failed to parse response: Expected ERROR responses to consist of four parts (CASP + ERROR + message + \n)."#);
+
+        let parsed_response = parse_response("CASP/WARN/SHUTDOWN/Server shutting down!/\n");
+        assert_eq!(parsed_response.unwrap_err(), r#"Failed to parse response: Expected WARN responses to consist of four parts (CASP + WARN + <command> + \n)."#);
     }
 }

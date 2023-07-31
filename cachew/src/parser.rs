@@ -18,7 +18,17 @@ fn parse_ranged_keys(query_keys: &str) -> Result<Vec<&str>, String> {
         return parser_error!(ParserErrorType::InvalidRange(tokens.len()));
     }
 
-    Ok(tokens)
+    let lower_key = match validate_key(tokens[0]) {
+        Ok(key) => key,
+        Err(error) => return Err(error)
+    };
+
+    let upper_key = match validate_key(tokens[1]) {
+        Ok(key) => key,
+        Err(error) => return Err(error)
+    };
+
+    Ok(vec![lower_key, upper_key])
 }
 
 /// Parses a string expected to be consist of many keys (>1) seperated by space.
@@ -30,9 +40,52 @@ fn parse_ranged_keys(query_keys: &str) -> Result<Vec<&str>, String> {
 /// `None` if the string didn't contain valid keys.
 /// Else, a vector containing the keys.
 fn parse_many_keys(query_keys: &str) -> Result<Vec<&str>, String> {    
-    let tokens: Vec<&str> = split_whitespaces(query_keys);
+    let mut tokens: Vec<&str> = split_whitespaces(query_keys);
+
+    tokens.iter_mut().try_for_each(|query_keys| {
+        match validate_key(query_keys) {
+            Ok(validated_key) => {
+                *query_keys = validated_key;
+                Ok(())
+            }
+            Err(error) => Err(error),
+        }
+    })?;
 
     Ok(tokens)
+}
+
+
+/*fn key_has_forbidden_char(key: &str) -> Result<(), String> {
+    let forbidden_cars: [char; 2] = [',', '/'];
+
+    if key.chars().any(|c| forbidden_cars.contains(&c)) {
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
+    }
+
+    Ok(())
+}
+
+
+fn check_key_quotes()*/
+
+
+fn validate_key(key: &str) -> Result<&str, String> {
+    let forbidden_cars: [char; 2] = [',', '/'];
+
+    if key.chars().any(|c| forbidden_cars.contains(&c)) {
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
+    }
+
+    if key.starts_with('"') && key.ends_with('"') {
+        return Ok(key.strip_prefix('"').unwrap_or(key).strip_suffix('"').unwrap_or(key))
+    }
+
+    if split_whitespaces(key).len() > 1 {
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
+    }
+
+    Ok(key)
 }
 
 /// Parses the parameters of a GET query.
@@ -43,10 +96,6 @@ fn parse_many_keys(query_keys: &str) -> Result<Vec<&str>, String> {
 /// # Returns:
 /// An instance of `QueryRequest`, variants: GET, GET_RANGE, GET_MANY or ERROR (if the parse failed).
 fn parse_get(query: &str) -> Result<QueryRequest, String> {
-    if query.contains(',') || query.contains('/') {
-        return parser_error!(ParserErrorType::UnexpectedCharacter);
-    }
-
     if query.starts_with("RANGE ") {
         match parse_ranged_keys(query.strip_prefix("RANGE ").unwrap()) {
             Ok(range_keys) => return Ok(QueryRequest::GET_RANGE { key_lower: range_keys[0].to_owned(), key_upper: range_keys[1].to_owned() }),
@@ -61,11 +110,12 @@ fn parse_get(query: &str) -> Result<QueryRequest, String> {
         }
     }
 
-    if split_whitespaces(query).len() > 1 {
-        return parser_error!(ParserErrorType::UnexpectedCharacter);
-    }
+    let key = match validate_key(query) {
+        Ok(key) => key,
+        Err(error) => return Err(error)
+    };
 
-    Ok(QueryRequest::GET(query.to_owned()))
+    Ok(QueryRequest::GET(key.to_owned()))
 }
 
 
@@ -77,11 +127,6 @@ fn parse_get(query: &str) -> Result<QueryRequest, String> {
 /// # Returns:
 /// An instance of `QueryRequest`, variants: DEL, DEL_RANGE, DEL_MANY or ERROR (if the parse failed).
 fn parse_del(query: &str) -> Result<QueryRequest, String> {
-    if query.contains(',') || query.contains('/') {
-        return parser_error!(ParserErrorType::UnexpectedCharacter);
-    }
-
-
     if query.starts_with("RANGE ") {
         match parse_ranged_keys(query.strip_prefix("RANGE ").unwrap()) {
             Ok(range_keys) => return Ok(QueryRequest::DEL_RANGE { key_lower: range_keys[0].to_owned(), key_upper: range_keys[1].to_owned() }),
@@ -96,11 +141,12 @@ fn parse_del(query: &str) -> Result<QueryRequest, String> {
         }
     }
 
-    if split_whitespaces(query).len() > 1 {
-        return parser_error!(ParserErrorType::UnexpectedCharacter);
-    }
+    let key = match validate_key(query) {
+        Ok(key) => key,
+        Err(error) => return Err(error)
+    };
 
-    Ok(QueryRequest::DEL(query.to_owned()))
+    Ok(QueryRequest::DEL(key.to_owned()))
 }
 
 
@@ -108,7 +154,7 @@ fn parse_del(query: &str) -> Result<QueryRequest, String> {
 fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) -> Result<ValueType, String> {
     match database_type {
         DatabaseType::Str => {
-            if !(value_query_parameter.starts_with('"') && value_query_parameter.ends_with('"') ){
+            if !(value_query_parameter.starts_with('"') && value_query_parameter.ends_with('"') ) {
                 return parser_error!(ParserErrorType::StringQuotesNotFound)
             }
             let value = value_query_parameter.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
@@ -159,7 +205,9 @@ fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) ->
 
 fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRequest<'a>, String> {
     if query.starts_with("MANY ") {
-        let pattern = Regex::new(r"\s*,\s*").unwrap();
+        // fails when string values have commata in them
+        // this maybe: "[^"]+"(?:,|$)|[^,]+"([^"]+)"|([^,]+) ?
+        let pattern = Regex::new(r#""\s*,\s*""#).unwrap();
         let key_value_pairs: Vec<String> = pattern.split(query.strip_prefix("MANY ").unwrap()).map(|s| s.trim().to_owned()).collect();
 
         let mut parsed_pairs: Vec<KeyValuePair> = vec![];
@@ -169,13 +217,14 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
                 return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
             }
 
-            if parameters[0].contains('/') || parameters[0].contains(',') {
-                return parser_error!(ParserErrorType::UnexpectedCharacter);
-            }
+            let key = match validate_key(parameters[0]) {
+                Ok(key) => key,
+                Err(error) => return Err(error)
+            };
 
             let parsed_value: Result<ValueType, String> = parse_set_value(parameters[1], database_type);
             match parsed_value {
-                Ok(value) => parsed_pairs.push(KeyValuePair { key: parameters[0].to_owned(), value}),
+                Ok(value) => parsed_pairs.push(KeyValuePair { key: key.to_owned(), value}),
                 Err(err) => return Err(err),
             }
         }
@@ -189,14 +238,15 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
         return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
     }
 
-    if parameters[0].contains('/') || parameters[0].contains(',') {
-        return parser_error!(ParserErrorType::UnexpectedCharacter);
-    }
+    let key = match validate_key(parameters[0]) {
+        Ok(key) => key,
+        Err(error) => return Err(error)
+    };
 
     // parse value into the right value type
     let parsed_value: Result<ValueType, String> = parse_set_value(parameters[1], database_type);
     match parsed_value {
-        Ok(value) => Ok(QueryRequest::SET(KeyValuePair { key: parameters[0].to_owned(), value})),
+        Ok(value) => Ok(QueryRequest::SET(KeyValuePair { key: key.to_owned(), value})),
         Err(err) => Err(err),
     }
 }
@@ -301,7 +351,7 @@ mod tests {
         assert_eq!(get_query, Ok(QueryRequest::GET("key".to_string())));
 
         let get_query = parse_get("\"key one\"");
-        assert_eq!(get_query, Ok(QueryRequest::GET("\"key one\"".to_string())));
+        assert_eq!(get_query, Ok(QueryRequest::GET("key one".to_string())));
 
         let get_query = parse_get("key0 key1");
         assert_eq!(get_query, parser_error!(ParserErrorType::UnexpectedCharacter))
@@ -348,7 +398,7 @@ mod tests {
         assert_eq!(del_query, Ok(QueryRequest::DEL("key".to_string())));
 
         let del_query = parse_del("\"key one\"");
-        assert_eq!(del_query, Ok(QueryRequest::DEL("\"key one\"".to_string())));
+        assert_eq!(del_query, Ok(QueryRequest::DEL("key one".to_string())));
 
         let del_query = parse_del("key0 key1");
         assert_eq!(del_query, parser_error!(ParserErrorType::UnexpectedCharacter))
@@ -356,7 +406,7 @@ mod tests {
 
     #[test]
     fn test_parse_del_range() {
-        let del_query = parse_del("RANGE key0 key1");
+        let del_query = parse_del("RANGE \"key0\" key1");
         assert_eq!(del_query, Ok(QueryRequest::DEL_RANGE { key_lower: "key0".to_string(), key_upper: "key1".to_string() }));
 
         let del_query = parse_del("RANGE key0");
@@ -406,16 +456,16 @@ mod tests {
 
     #[test]
     fn test_parse_set_many() {
-        let get_query = parse_set("MANY key0 \"val0\", key1 \"val1\" ,   key2 \"val2\",key3 \"val3\"", &DatabaseType::Str);
-        assert_eq!(get_query, Ok(QueryRequest::SET_MANY(vec![
+        let set_query = parse_set("MANY key0 \"val0\", key1 \"val1\" ,   key2 \"val2\",key3 \"val3\"", &DatabaseType::Str);
+        assert_eq!(set_query, Ok(QueryRequest::SET_MANY(vec![
             KeyValuePair { key: "key0".to_owned(), value: ValueType::Str("val0".to_owned()) },
             KeyValuePair { key: "key1".to_owned(), value: ValueType::Str("val1".to_owned()) },
             KeyValuePair { key: "key2".to_owned(), value: ValueType::Str("val2".to_owned()) },
             KeyValuePair { key: "key3".to_owned(), value: ValueType::Str("val3".to_owned()) },
         ])));
 
-        let get_query = parse_set("MANY key0 1, key1 22, key2 -22, key3 1000", &DatabaseType::Int);
-        assert_eq!(get_query, Ok(QueryRequest::SET_MANY(vec![
+        let set_query = parse_set("MANY key0 1, key1 22, key2 -22, key3 1000", &DatabaseType::Int);
+        assert_eq!(set_query, Ok(QueryRequest::SET_MANY(vec![
             KeyValuePair { key: "key0".to_owned(), value: ValueType::Int(1) },
             KeyValuePair { key: "key1".to_owned(), value: ValueType::Int(22) },
             KeyValuePair { key: "key2".to_owned(), value: ValueType::Int(-22) },
@@ -424,6 +474,13 @@ mod tests {
 
         let set_query = parse_set("MANY key0 \"val0\", key1,", &DatabaseType::Str);   
         assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(1)));
+
+        let set_query = parse_set("MANY key0 \"val0\", key1 \"hello, world\"", &DatabaseType::Str);   
+        assert_eq!(set_query, Ok(QueryRequest::SET_MANY(vec![
+            KeyValuePair { key: "key0".to_owned(), value: ValueType::Str("val0".to_string()) },
+            KeyValuePair { key: "key1".to_owned(), value: ValueType::Str("hello, world".to_string()) }
+        ])));
+        
     }
 
     // Unit tests for the `parse_auth` function:
@@ -510,5 +567,8 @@ mod tests {
     fn test_split_whitespaces() {
         let split_string: Vec<&str> = split_whitespaces("test test \"in quotes\" test \"in quotes\"");
         assert_eq!(split_string, vec!["test", "test", "\"in quotes\"", "test", "\"in quotes\""]);
+
+        let split_string: Vec<&str> = split_whitespaces("hallo/\"li,ebe /welt\" /wi,e gets\",\"");
+        assert_eq!(split_string, vec!["hallo/\"li,ebe /welt\"", "/wi,e", "gets\",\""]);
     }
 }

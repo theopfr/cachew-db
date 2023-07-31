@@ -2,22 +2,28 @@
 use colored::Colorize;
 use std::io::{self, Write};
 use std::error::Error;
-use crate::parser::ParsedResponse;
+use crate::parser::{ParsedResponse, ResponseStatus};
 
 
 pub fn print_response(response: &ParsedResponse) {
-    if response.is_ok {
-        match &response.value {
-            None => println!("\r{} {} {}\n", "server >>".bright_black(), "OK".green(), response.command.as_ref().unwrap().green()),
-            Some(value) => println!("\r{} {} {}: {}\n", "server >>".bright_black(), "OK".green(), response.command.as_ref().unwrap().green(), value),
+    match response.status {
+        ResponseStatus::OK => {
+            match &response.value {
+                None => println!("\r{} {} {}\n", "server >>".bright_black(), "OK".green(), response.command.as_ref().unwrap().green()),
+                Some(value) => println!("\r{} {} {}: {}\n", "server >>".bright_black(), "OK".green(), response.command.as_ref().unwrap().green(), value),
+            }
+        },
+        ResponseStatus::WARN => {
+            println!("\r{} {} {}\n", "server >>".bright_black(), "WARN".yellow(), response.command.as_ref().unwrap().green())
+        },
+        ResponseStatus::ERROR => {
+            match &response.value {
+                None => println!("\r{}: Failed to parse response.\n", "ERROR".red()),
+                Some(value) => println!("\r{} {} {}\n", "server >>".bright_black(), "ERROR".red(), value),
+            }
         }
     }
-    else {
-        match &response.value {
-            None => println!("\r{}: Failed to parse response.\n", "ERROR".red()),
-            Some(value) => println!("\r{} {} {}\n", "server >>".bright_black(), "ERROR".red(), value),
-        }
-    }
+
 }
 
 pub fn print_parser_error(error: &str) {

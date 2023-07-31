@@ -12,6 +12,8 @@ use cli::{CliArgs, get_cli_arguments};
 use parser::{ParsedResponse, parse_response};
 use interface::*;
 
+use crate::parser::ResponseStatus;
+
 
 fn build_request(input: &str) -> String {
     const CASP_PREFIX: &str = "CASP";
@@ -38,8 +40,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // string buffer to store responses
     let mut line: String = String::new();
-    // string buffer to store user input
-    let mut stdin = tokio::io::BufReader::new(tokio::io::stdin());
 
     // make an initial authentication request
     if let Some(password) = cli_arguments.password {
@@ -51,7 +51,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         match parsed_response {
             Ok(response) => {
-                if response.is_ok {
+                if response.status == ResponseStatus::OK {
                     print_info("Authentication successful.".to_string());
                 }
                 else {
@@ -65,36 +65,43 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
         }
     }
+    else {
+        print_warn("Not authenticated. You won't be able to make requests.");
+    }
     
     println!();
 
-    // string buffer to store responses
-    let mut line: String = String::new();
+    line = String::new();
     // string buffer to store user input
     let mut stdin = tokio::io::BufReader::new(tokio::io::stdin());
+    let mut input = String::new();
 
     loop {
-        prompt_command();        
-        let mut input = String::new();
+        prompt_command();
+
+        input = String::new();
 
         tokio::select! {
             _ = reader.read_line(&mut line) => {
-                let parsed_response: Result<ParsedResponse, String> = parse_response(&line);
 
-                match parsed_response {
+                let parsed_response: Result<ParsedResponse, String> = parse_response(&line);
+                match &parsed_response {
                     Ok(response) => {
                         print_response(&response);
-                        
-                        // TODO: exit on shutdown command
-                        /*if let Some(command) = &response.command {
+
+                        if let Some(command) = &response.command {
                             if command == "SHUTDOWN" {
                                 print_warn("Disconnecting.");
                                 std::process::exit(0);
                             }
-                        }*/
+                        }
                     },
-                    Err(error) => print_parser_error(&error)
+                    Err(error) => {
+                        print_parser_error(&error);
+                    }
                 }
+
+                line.clear();
             }
             _ = stdin.read_line(&mut input) => {
                 if input.len() > 1 {
