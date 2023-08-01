@@ -13,7 +13,7 @@ use crate::errors::parser_errors::{ParserErrorType};
 /// `None` if the string didn't contain two valid keys or the left key is smaller than the right one.
 /// Else, a vector of length two containing the keys.
 fn parse_ranged_keys(query_keys: &str) -> Result<Vec<&str>, String> {    
-    let tokens: Vec<&str> = split_whitespaces(query_keys);
+    let tokens: Vec<&str> = split_at_delimiter(query_keys, ' ');
     if tokens.len() != 2 {
         return parser_error!(ParserErrorType::InvalidRange(tokens.len()));
     }
@@ -40,7 +40,7 @@ fn parse_ranged_keys(query_keys: &str) -> Result<Vec<&str>, String> {
 /// `None` if the string didn't contain valid keys.
 /// Else, a vector containing the keys.
 fn parse_many_keys(query_keys: &str) -> Result<Vec<&str>, String> {    
-    let mut tokens: Vec<&str> = split_whitespaces(query_keys);
+    let mut tokens: Vec<&str> = split_at_delimiter(query_keys, ' ');
 
     tokens.iter_mut().try_for_each(|query_keys| {
         match validate_key(query_keys) {
@@ -51,23 +51,10 @@ fn parse_many_keys(query_keys: &str) -> Result<Vec<&str>, String> {
             Err(error) => Err(error),
         }
     })?;
+    
 
     Ok(tokens)
 }
-
-
-/*fn key_has_forbidden_char(key: &str) -> Result<(), String> {
-    let forbidden_cars: [char; 2] = [',', '/'];
-
-    if key.chars().any(|c| forbidden_cars.contains(&c)) {
-        return parser_error!(ParserErrorType::UnexpectedCharacter);
-    }
-
-    Ok(())
-}
-
-
-fn check_key_quotes()*/
 
 
 fn validate_key(key: &str) -> Result<&str, String> {
@@ -81,11 +68,45 @@ fn validate_key(key: &str) -> Result<&str, String> {
         return Ok(key.strip_prefix('"').unwrap_or(key).strip_suffix('"').unwrap_or(key))
     }
 
-    if split_whitespaces(key).len() > 1 {
+    if split_at_delimiter(key, ' ').len() > 1 {
         return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
 
     Ok(key)
+}
+
+
+/// Splits a string at a delimiter, unless the delimiter is in a substring enclosed by quotes.
+/// 
+/// # Arguments:
+/// * `string`: The string to split.
+/// * `delimiter`: The delimiter on which to split.
+/// 
+/// # Returns:
+/// A vector containing the parts of the string (with quotes removed).
+fn split_at_delimiter(string: &str, delimiter: char) -> Vec<&str> {
+    let mut parts: Vec<&str> = Vec::new();
+    let mut current_part = 0;
+    let mut inside_quotes = false;
+
+    for (index, ch) in string.char_indices() {
+        match ch {
+            '"' => {
+                inside_quotes = !inside_quotes;
+            }
+            ch if ch == delimiter && !inside_quotes => {
+                let part = &string[current_part..index];
+                parts.push(part.trim_matches(|c| c == ' '));
+                current_part = index + ch.len_utf8();
+            }
+            _ => {}
+        }
+    }
+
+    let part = &string[current_part..];
+    parts.push(part.trim_matches(|c| c == ' '));
+
+    parts
 }
 
 /// Parses the parameters of a GET query.
@@ -207,12 +228,15 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
     if query.starts_with("MANY ") {
         // fails when string values have commata in them
         // this maybe: "[^"]+"(?:,|$)|[^,]+"([^"]+)"|([^,]+) ?
-        let pattern = Regex::new(r#""\s*,\s*""#).unwrap();
-        let key_value_pairs: Vec<String> = pattern.split(query.strip_prefix("MANY ").unwrap()).map(|s| s.trim().to_owned()).collect();
+        //let pattern = Regex::new(r#"\s*,\s*"#).unwrap();
 
+        let key_value_pairs: Vec<&str> = split_at_delimiter(query.strip_prefix("MANY ").unwrap(), ',');
+        
         let mut parsed_pairs: Vec<KeyValuePair> = vec![];
         for pair in key_value_pairs {
-            let parameters: Vec<&str> = split_whitespaces(&pair);
+            let parameters: Vec<&str> = split_at_delimiter(pair, ' ');
+            //let parameters: Vec<&str> = parameters.iter().map(|s| s.as_str()).collect();
+
             if parameters.len() != 2 {
                 return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
             }
@@ -233,7 +257,7 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
     }
 
     // check if the query consists just of a key and value
-    let parameters: Vec<&str> = split_whitespaces(query);
+    let parameters: Vec<&str> = split_at_delimiter(query, ' ');
     if parameters.len() != 2 {
         return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
     }
@@ -265,7 +289,7 @@ fn parse_exists(query: &str) -> Result<QueryRequest, String> {
     if query.contains(',') || query.contains('/') {
         return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
-    if split_whitespaces(query).len() > 1 {
+    if split_at_delimiter(query, ' ').len() > 1 {
         return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
 
@@ -318,21 +342,6 @@ pub fn parse<'a>(request: &'a str, database_type: &DatabaseType) -> Result<Query
     }
 
     parser_error!(ParserErrorType::UnknownQueryOperation(request.to_string()))
-}
-
-/// Splits a string at its spaces, unless enclosed by quotes.
-/// 
-/// # Arguments:
-/// * `string`: The string to split.
-/// 
-/// # Returns:
-/// A vector containing the parts of the string (with quotes removed).
-pub fn split_whitespaces(string: &str) -> Vec<&str>{
-    let regex = Regex::new(r#""[^"]+"|\S+"#).unwrap();
-    regex.find_iter(string).map(|m| {
-        let matched_string: &str = m.as_str();
-        matched_string
-    }).collect()
 }
 
 
@@ -564,11 +573,25 @@ mod tests {
     }
 
     #[test]
-    fn test_split_whitespaces() {
-        let split_string: Vec<&str> = split_whitespaces("test test \"in quotes\" test \"in quotes\"");
+    fn test_split_at_delimiter() {
+        // test splits at spaces
+        let split_string: Vec<&str> = split_at_delimiter("test test \"in quotes\" test \"in quotes\"", ' ');
         assert_eq!(split_string, vec!["test", "test", "\"in quotes\"", "test", "\"in quotes\""]);
 
-        let split_string: Vec<&str> = split_whitespaces("hallo/\"li,ebe /welt\" /wi,e gets\",\"");
+        let split_string: Vec<&str> = split_at_delimiter("hallo/\"li,ebe /welt\" /wi,e gets\",\"", ' ');
         assert_eq!(split_string, vec!["hallo/\"li,ebe /welt\"", "/wi,e", "gets\",\""]);
+
+        // test splits at commata
+        let split_string: Vec<&str> = split_at_delimiter("test , test \"in, quotes\" test, \",in quotes\"", ',');
+        assert_eq!(split_string, vec!["test", "test \"in, quotes\" test", "\",in quotes\""]);
+
+        let split_string: Vec<&str> = split_at_delimiter(" key1 \"hello, world\"\n   , k2 \",test\"   ", ',');
+        assert_eq!(split_string, vec!["key1 \"hello, world\"\n", "k2 \",test\""]);
+
+        let split_string: Vec<&str> = split_at_delimiter("CASP/OK/AUTH/\n", '/');
+        assert_eq!(split_string, vec!["CASP", "OK", "AUTH", "\n"]);
+
+        let split_string: Vec<&str> = split_at_delimiter("no dash", '-');
+        assert_eq!(split_string, vec!["no dash"]);
     }
 }

@@ -30,7 +30,7 @@ impl QueryResponse {
             ValueType::Int(value) => format!("{}", value),
             ValueType::Float(value) => format!("{}", value),
             ValueType::Bool(value) => format!("{}", value),
-            ValueType::Json(value) => value.to_string(),
+            ValueType::Json(value) => format!("\"{}\"", value),
         }
     }
 
@@ -47,6 +47,11 @@ impl QueryResponse {
                         write!(&mut content, ",").expect("");
                     }
                 }
+
+                if content.is_empty() {
+                    content = "NONE".to_string();
+                }
+
                 Self::build_ok_response("GET RANGE".to_string(), Some(content), Some(database_type))
 
             },
@@ -153,7 +158,13 @@ mod tests {
             QueryResponseType::GET_RANGE_OK(vec![ValueType::Float(0.01), ValueType::Float(0.02), ValueType::Float(0.03)]),
             &DatabaseType::Float
         );
-        assert_eq!(response, "CASP/OK/GET RANGE/FLOAT/0.01,0.02,0.03/\n")
+        assert_eq!(response, "CASP/OK/GET RANGE/FLOAT/0.01,0.02,0.03/\n");
+
+        let response = QueryResponse::ok(
+            QueryResponseType::GET_RANGE_OK(vec![]),
+            &DatabaseType::Float
+        );
+        assert_eq!(response, "CASP/OK/GET RANGE/FLOAT/NONE/\n")
     }
 
     #[test]

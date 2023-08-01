@@ -48,7 +48,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         let _ = reader.read_line(&mut line).await;
         let parsed_response: Result<ParsedResponse, String> = parse_response(&line);
-
         match parsed_response {
             Ok(response) => {
                 if response.status == ResponseStatus::OK {
@@ -83,7 +82,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         tokio::select! {
             _ = reader.read_line(&mut line) => {
-
+                println!("{}", &line);
                 let parsed_response: Result<ParsedResponse, String> = parse_response(&line);
                 match &parsed_response {
                     Ok(response) => {

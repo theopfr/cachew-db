@@ -48,7 +48,7 @@ async fn handle_client(mut socket: TcpStream, address: SocketAddr, state_clone: 
                 let _ = socket_writer.write_all(QueryResponse::warn("SHUTDOWN").to_string().as_bytes()).await;
                 break;
             }
-            byte_amount = reader.read_line(&mut line) => {                
+            byte_amount = reader.read_line(&mut line) => {
                 let mut state_lock = state_clone.lock().await;
 
                 if byte_amount.unwrap() == 0 {
@@ -146,7 +146,7 @@ pub async fn serve(state: State, host: &str, port: &str) {
                 info!("Accepted new client ({}).", address);
 
                 let state_clone = Arc::clone(&state);
-                let shutdown_rx_clone =  state_clone.lock().await.subscribe_shutdown_channel();
+                let shutdown_rx_clone = state_clone.lock().await.subscribe_shutdown_channel();
                 tokio::spawn(handle_client(socket, address, state_clone, shutdown_rx_clone));
             }
         }

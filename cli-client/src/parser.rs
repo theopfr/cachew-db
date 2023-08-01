@@ -1,4 +1,4 @@
-use regex::Regex;
+use log::debug;
 
 
 #[derive(Debug, PartialEq)]
@@ -16,13 +16,39 @@ pub struct ParsedResponse {
     pub value: Option<String>,
 }
 
+/// Splits a string at a delimiter, unless the delimiter is in a substring enclosed by quotes.
+/// 
+/// # Arguments:
+/// * `string`: The string to split.
+/// * `delimiter`: The delimiter on which to split.
+/// 
+/// # Returns:
+/// A vector containing the parts of the string (with quotes removed).
+fn split_at_delimiter(string: &str, delimiter: char) -> Vec<&str> {
+    let mut parts: Vec<&str> = Vec::new();
+    let mut current_part = 0;
+    let mut inside_quotes = false;
 
-fn split_slash_delimiter(string: &str) -> Vec<&str>{
-    let regex = Regex::new(r#""[^"]+"(?:/|$)|[^/]+"([^"]+)"|([^/]+)"#).unwrap();
-    regex.find_iter(string).map(|m| {
-        let matched_string: &str = m.as_str();
-        matched_string
-    }).collect()
+    for (index, ch) in string.char_indices() {
+        match ch {
+            '"' => {
+                inside_quotes = !inside_quotes;
+            }
+            ch if ch == delimiter && !inside_quotes => {
+                let part = &string[current_part..index];
+
+                // trim whitespace but keep '\n'
+                parts.push(part.trim_matches(|c| c == ' '));
+                current_part = index + ch.len_utf8();
+            }
+            _ => {}
+        }
+    }
+
+    let part = &string[current_part..];
+    parts.push(part.trim_matches(|c| c == ' '));
+
+    parts
 }
 
 
@@ -36,9 +62,9 @@ pub fn parse_response(response: &str) -> Result<ParsedResponse, String> {
 
 
     // split response parts at delimiter "/"
-    let response_parts: Vec<&str> = split_slash_delimiter(response);
+    let response_parts: Vec<&str> = split_at_delimiter(response, '/');
 
-    if response_parts.is_empty() {
+    if response_parts.len() == 1 && response_parts[0] == "" {
         return Err("Failed to parse response: Received empty response.".to_string());
     }
 
@@ -127,10 +153,10 @@ mod tests {
 
     #[test]
     fn test_split_slash_delimiter() {
-        let split_string: Vec<&str> = split_slash_delimiter("CASP/OK/GET/INT/key \"value/1\"/\n");
+        let split_string: Vec<&str> = split_at_delimiter("CASP/OK/GET/INT/key \"value/1\"/\n", '/');
         assert_eq!(split_string, vec!["CASP", "OK", "GET", "INT", "key \"value/1\"", "\n"]);
 
-        let split_string: Vec<&str> = split_slash_delimiter("\"A/B/C//D\"");
+        let split_string: Vec<&str> = split_at_delimiter("\"A/B/C//D\"", '/');
         assert_eq!(split_string, vec!["\"A/B/C//D\""]);
     }
 
@@ -142,17 +168,17 @@ mod tests {
 
         let parsed_response = parse_response("CASP/OK/GET MANY/INT/10,20,30/\n");
         assert_eq!(parsed_response, Ok(ParsedResponse { 
-            ResponseStatus::OK, command: Some("GET MANY".to_string()), value: Some("10,20,30".to_string())
+            status: ResponseStatus::OK, command: Some("GET MANY".to_string()), value: Some("10,20,30".to_string())
         }));
 
         let parsed_response = parse_response("CASP/OK/LEN/10/\n");
-        assert_eq!(parsed_response, Ok(ParsedResponse { ResponseStatus::OK, command: Some("LEN".to_string()), value: Some("10".to_string()) }));
+        assert_eq!(parsed_response, Ok(ParsedResponse { status: ResponseStatus::OK, command: Some("LEN".to_string()), value: Some("10".to_string()) }));
 
         let parsed_response = parse_response("CASP/ERROR/An error appeared./\n");
-        assert_eq!(parsed_response, Ok(ParsedResponse { ResponseStatus::ERROR, command: None, value: Some("An error appeared.".to_string()) }));
+        assert_eq!(parsed_response, Ok(ParsedResponse { status: ResponseStatus::ERROR, command: None, value: Some("An error appeared.".to_string()) }));
 
         let parsed_response = parse_response("CASP/WARN/SHUTDOWN/\n");
-        assert_eq!(parsed_response, Ok(ParsedResponse { ResponseStatus::WARN, command: Some("SHUTDOWN".to_string()), value: None }));
+        assert_eq!(parsed_response, Ok(ParsedResponse { status: ResponseStatus::WARN, command: Some("SHUTDOWN".to_string()), value: None }));
 
         // test failures
         let parsed_response = parse_response("");
