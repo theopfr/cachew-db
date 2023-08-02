@@ -119,6 +119,6 @@ For the specification of the custom protocol used for communicating with a Cache
 #### Todo
 - [x] add graceful shutdown
 - [x] add command line flag handler
-- [ ] built CLI client
+- [x] built CLI client
 - [ ] add persistance
 - [ ] add INCR/DECR commands for INT type
