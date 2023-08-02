@@ -25,7 +25,7 @@ cargo build --release
 ```
 
 ##### 2. Run using Cargo:
-To start the CachewDB server you have to run ``cargo run`` or the binary ``./target/release/cachew``. You have to specify the following arguments either with command line flags or using environment variables:
+To start the CachewDB server you have to run ``cargo run`` or the binary ``./target/release/cachew``. You also have to specify the following arguments either with command line flags or using environment variables:
 
 | flag | short | description | ENV |
 |:-------|:----------|:----------|:----------|
@@ -35,7 +35,7 @@ To start the CachewDB server you have to run ``cargo run`` or the binary ``./tar
 | --db-type | n/a | The port the server will be accessible on (optional, default: ``8080``). | CACHEW_DB_PORT |
 
 ##### Examples:
-1. Using flags for db-type and password and default host and port.
+1. Using flags to set the db-type and password.
    ```bash
    cargo run --release -- -t STR -p Password123#     # host will default to 127.0.0.1 and port to 8080
    ```
@@ -94,7 +94,7 @@ cargo run --release -- --host 127.0.0.1 --port 8080 --password Password123#
 ---
 
 ### :memo: Keys:
-Key can consist of any characters expect spaces (" ") or commata (","), unless they key is encapsulated inside quotes. For example ``?939__.`` and ``"key one"`` are a valid keys.
+Keys can consist of any characters expect spaces (" "), commata (",") or forward slashes ("/"). Though, you can use spaces if the key is encapsulated by quotes. For example ``?939__.`` and ``"key one"`` are a valid keys, ``my,key``, ``"my,key"`` and ``"my/key"`` are not.
 
 ---
 
@@ -112,7 +112,6 @@ Supported types are:
 
 ### :memo: CASP protocol specification:
 For the specification of the custom protocol used for communicating with a CachewDB instance check this document: [CASP_SPECIFICATION.md](./CASP_SPECIFICATION.md)
-
 
 ---
 
