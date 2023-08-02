@@ -37,12 +37,12 @@ To start the CachewDB server you have to run ``cargo run`` or the binary ``./tar
 ##### Examples:
 1. Using flags for db-type and password and default host and port.
    ```bash
-   cargo run --release -- -t STR -p Str0ongPa??word     # host will default to 127.0.0.1 and port to 8080
+   cargo run --release -- -t STR -p Password123#     # host will default to 127.0.0.1 and port to 8080
    ```
 2. Using ENV variables to specify all arguments:
    ```bash
    export CACHEW_DB_TYPE="STR"
-   export CACHEW_DB_PASSWORD="Str0ongPa??word"
+   export CACHEW_DB_PASSWORD="Password123#"
    export CACHEW_DB_HOST="127.0.0.1"
    export CACHEW_DB_PORT="2345"
    cargo run --release

@@ -1,5 +1,5 @@
 mod cli;
-mod interface;
+//mod interface;
 mod parser;
 
 use std::error::Error;
@@ -8,19 +8,8 @@ use tokio::task;
 use tokio::net::{TcpStream, tcp::ReadHalf};
 use std::io;
 
-use cli::{CliArgs, get_cli_arguments};
-use parser::{ParsedResponse, parse_response};
-use interface::*;
-
-use crate::parser::ResponseStatus;
-
-
-fn build_request(input: &str) -> String {
-    const CASP_PREFIX: &str = "CASP";
-    const CASP_SUFFIX: &str = "\n";
-
-    format!("{}/{}/{}", CASP_PREFIX, input.trim(), CASP_SUFFIX)
-}
+use cli::*;
+use parser::{ParsedResponse, ResponseStatus, parse_response};
 
 
 #[tokio::main]
@@ -30,13 +19,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     // connect to CachewDB server
     let mut stream = TcpStream::connect(&host_address).await.map_err(|error| {
-        print_error(format!("Failed to connect to server {}.", &host_address), format!("{}", error))
+        print_error(&format!("Failed to connect to server {}. Error: {}", &host_address, error))
     }).unwrap();
 
     let (reader, mut writer) = stream.split(); 
     let mut reader: BufReader<ReadHalf> = BufReader::new(reader);
 
-    print_info(format!("Connected to server {}.", &host_address));
+    print_info(&format!("Connected to server {}.", &host_address));
 
     // string buffer to store responses
     let mut line: String = String::new();
@@ -51,10 +40,10 @@ async fn main() -> Result<(), Box<dyn Error>> {
         match parsed_response {
             Ok(response) => {
                 if response.status == ResponseStatus::OK {
-                    print_info("Authentication successful.".to_string());
+                    print_info("Authentication successful.");
                 }
                 else {
-                    print_error("Authentication failed.".to_string(), response.value.unwrap());
+                    print_error(&format!("Authentication failed. Error: {}", response.value.unwrap()));
                     std::process::exit(0);
                 }
             },
@@ -82,7 +71,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         tokio::select! {
             _ = reader.read_line(&mut line) => {
-                println!("{}", &line);
+
                 let parsed_response: Result<ParsedResponse, String> = parse_response(&line);
                 match &parsed_response {
                     Ok(response) => {
@@ -104,8 +93,25 @@ async fn main() -> Result<(), Box<dyn Error>> {
             }
             _ = stdin.read_line(&mut input) => {
                 if input.len() > 1 {
-                    input = build_request(&input);
-                    let _ = writer.write_all(input.as_bytes()).await;
+                    let cli_command: CliCommand = get_cli_command(&input);
+
+                    match cli_command {
+                        CliCommand::DatabaseRequest(request) => {
+                            let casp_request = build_request(&request);
+                            let _ = writer.write_all(casp_request.as_bytes()).await;
+                        }
+                        CliCommand::Exit => {
+                            print_warn("Stopping client.");
+                            std::process::exit(0);
+                        }
+                        CliCommand::Help => {
+                            //print_info("Help on its way.");
+                            print_help();
+                        }
+                        CliCommand::Unknown(command) => {
+                            print_error(&format!("Unknown meta command '{}'. Type '$help' to see available commands.", command));
+                        }
+                    }
                 }
             }
         }
