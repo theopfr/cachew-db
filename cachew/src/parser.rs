@@ -4,6 +4,8 @@ use crate::schemas::{QueryRequest, KeyValuePair, ValueType, DatabaseType};
 use crate::{parser_error};
 use crate::errors::parser_errors::{ParserErrorType};
 
+
+
 /// Parses a string expected to be consist of two ordered keys seperated by space.
 /// 
 /// # Arguments:
@@ -88,11 +90,14 @@ fn split_at_delimiter(string: &str, delimiter: char) -> Vec<&str> {
     let mut parts: Vec<&str> = Vec::new();
     let mut current_part = 0;
     let mut inside_quotes = false;
+    let mut prev_char: Option<char> = None;
 
     for (index, ch) in string.char_indices() {
         match ch {
             '"' => {
-                inside_quotes = !inside_quotes;
+                if prev_char != Some('\\') {
+                    inside_quotes = !inside_quotes;
+                }
             }
             ch if ch == delimiter && !inside_quotes => {
                 let part = &string[current_part..index];
@@ -101,6 +106,7 @@ fn split_at_delimiter(string: &str, delimiter: char) -> Vec<&str> {
             }
             _ => {}
         }
+        prev_char = Some(ch);
     }
 
     let part = &string[current_part..];
@@ -172,15 +178,21 @@ fn parse_del(query: &str) -> Result<QueryRequest, String> {
 
 
 
-fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) -> Result<ValueType, String> {
+fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) -> Result<ValueType, String> {   
     match database_type {
         DatabaseType::Str => {
             if !(value_query_parameter.starts_with('"') && value_query_parameter.ends_with('"') ) {
                 return parser_error!(ParserErrorType::StringQuotesNotFound)
             }
+
             let value = value_query_parameter.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
 
-            let parsed_value: String = match value.parse::<String>() {
+            // Replace escaped double quotes with regular double quotes
+            let unescaped_value = value.replace("\\\"", "\"");
+
+            //let value = value_query_parameter.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
+
+            let parsed_value: String = match unescaped_value.parse::<String>() {
                 Ok(parsed) => parsed,
                 Err(_) => return parser_error!(ParserErrorType::WrongValueType(database_type.to_string()))
             };
@@ -261,7 +273,7 @@ fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRe
     if parameters.len() != 2 {
         return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
     }
-
+    
     let key = match validate_key(parameters[0]) {
         Ok(key) => key,
         Err(error) => return Err(error)
@@ -286,14 +298,19 @@ fn parse_auth(password: &str) -> Result<QueryRequest, String> {
 
 
 fn parse_exists(query: &str) -> Result<QueryRequest, String> {
-    if query.contains(',') || query.contains('/') {
+    /*if query.contains(',') || query.contains('/') {
         return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
     if split_at_delimiter(query, ' ').len() > 1 {
         return parser_error!(ParserErrorType::UnexpectedCharacter);
-    }
+    }*/
 
-    return Ok(QueryRequest::EXISTS(query.to_owned()));
+    let key = match validate_key(query) {
+        Ok(key) => key,
+        Err(error) => return Err(error)
+    };
+
+    return Ok(QueryRequest::EXISTS(key.to_owned()));
 }
 
 

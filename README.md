@@ -3,7 +3,7 @@
     <img src="./images/cachew-logo.png" width="500">
 </p>
 
-## A light weight, strongly typed, in-memory, ordered, key-value database.
+## A light weight, typed, in-memory, ordered, key-value database.
 ###### ⚠️ CachewDB is still in development!
 
 ### :memo: Features:
