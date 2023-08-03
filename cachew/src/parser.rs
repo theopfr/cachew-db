@@ -67,7 +67,12 @@ fn validate_key(key: &str) -> Result<&str, String> {
     }
 
     if key.starts_with('"') && key.ends_with('"') {
-        return Ok(key.strip_prefix('"').unwrap_or(key).strip_suffix('"').unwrap_or(key))
+        let string_key = key.strip_prefix('"').unwrap_or(key).strip_suffix('"').unwrap_or(key);
+        if string_key.is_empty() {
+            return parser_error!(ParserErrorType::UnexpectedCharacter);
+        }
+
+        return Ok(string_key)
     }
 
     if split_at_delimiter(key, ' ').len() > 1 {
@@ -177,7 +182,6 @@ fn parse_del(query: &str) -> Result<QueryRequest, String> {
 }
 
 
-
 fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) -> Result<ValueType, String> {   
     match database_type {
         DatabaseType::Str => {
@@ -187,12 +191,13 @@ fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) ->
 
             let value = value_query_parameter.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
 
-            // Replace escaped double quotes with regular double quotes
-            let unescaped_value = value.replace("\\\"", "\"");
+            let escaped_quote_pattern = r#"([^\\])""#;
+            let re = Regex::new(escaped_quote_pattern).unwrap();
+            if re.is_match(value) {
+                return parser_error!(ParserErrorType::UnescapedDoubleQuote);
+            }
 
-            //let value = value_query_parameter.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
-
-            let parsed_value: String = match unescaped_value.parse::<String>() {
+            let parsed_value: String = match value.parse::<String>() {
                 Ok(parsed) => parsed,
                 Err(_) => return parser_error!(ParserErrorType::WrongValueType(database_type.to_string()))
             };
@@ -220,10 +225,17 @@ fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) ->
             Ok(ValueType::Bool(parsed_value))
         },
         DatabaseType::Json => {
-            if !(value_query_parameter.starts_with('"') && value_query_parameter.ends_with('"') ){
+            if !(value_query_parameter.starts_with('"') && value_query_parameter.ends_with('"') ) {
                 return parser_error!(ParserErrorType::StringQuotesNotFound)
             }
+
             let value = value_query_parameter.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
+
+            let escaped_quote_pattern = r#"([^\\])""#;
+            let re = Regex::new(escaped_quote_pattern).unwrap();
+            if re.is_match(value) {
+                return parser_error!(ParserErrorType::UnescapedDoubleQuote);
+            }
 
             let parsed_value: String = match value.parse::<String>() {
                 Ok(parsed) => parsed,
@@ -238,16 +250,11 @@ fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) ->
 
 fn parse_set<'a>(query: &'a str, database_type: &DatabaseType) -> Result<QueryRequest<'a>, String> {
     if query.starts_with("MANY ") {
-        // fails when string values have commata in them
-        // this maybe: "[^"]+"(?:,|$)|[^,]+"([^"]+)"|([^,]+) ?
-        //let pattern = Regex::new(r#"\s*,\s*"#).unwrap();
-
         let key_value_pairs: Vec<&str> = split_at_delimiter(query.strip_prefix("MANY ").unwrap(), ',');
         
         let mut parsed_pairs: Vec<KeyValuePair> = vec![];
         for pair in key_value_pairs {
             let parameters: Vec<&str> = split_at_delimiter(pair, ' ');
-            //let parameters: Vec<&str> = parameters.iter().map(|s| s.as_str()).collect();
 
             if parameters.len() != 2 {
                 return parser_error!(ParserErrorType::InvalidKeyValuePair(parameters.len()));
@@ -298,13 +305,6 @@ fn parse_auth(password: &str) -> Result<QueryRequest, String> {
 
 
 fn parse_exists(query: &str) -> Result<QueryRequest, String> {
-    /*if query.contains(',') || query.contains('/') {
-        return parser_error!(ParserErrorType::UnexpectedCharacter);
-    }
-    if split_at_delimiter(query, ' ').len() > 1 {
-        return parser_error!(ParserErrorType::UnexpectedCharacter);
-    }*/
-
     let key = match validate_key(query) {
         Ok(key) => key,
         Err(error) => return Err(error)
@@ -451,6 +451,9 @@ mod tests {
         let set_query = parse_set("key \"value\"", &DatabaseType::Str);
         assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Str("value".to_owned()) })));
 
+        let set_query = parse_set("\"string key\" \"value\"", &DatabaseType::Str);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "string key".to_owned(), value: ValueType::Str("value".to_owned()) })));
+
         let set_query = parse_set("key \"hello world\"", &DatabaseType::Str);
         assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Str("hello world".to_owned()) })));
 
@@ -469,15 +472,35 @@ mod tests {
         let set_query = parse_set("key \"{key1: 10, key2: 20}\"", &DatabaseType::Json);
         assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Json("{key1: 10, key2: 20}".to_owned()) })));
 
+        // test escaped quotes
+        let set_query = parse_set("key \"name: \\\"ANON\\\"\"",&DatabaseType::Str);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Str("name: \\\"ANON\\\"".to_owned()) })));
+
+        let set_query = parse_set("key \"name: \\\"escpaced quotes\\\" another one\\\"\"",&DatabaseType::Str);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Str("name: \\\"escpaced quotes\\\" another one\\\"".to_owned()) })));
+
+        let set_query = parse_set("key \"\"",&DatabaseType::Str);
+        assert_eq!(set_query, Ok(QueryRequest::SET(KeyValuePair { key: "key".to_owned(), value: ValueType::Str("".to_owned()) })));
+
         let set_query = parse_set("key \"val0\" \"val1\"", &DatabaseType::Str);
         assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(3)));
 
         let set_query = parse_set("key value", &DatabaseType::Str);
         assert_eq!(set_query, parser_error!(ParserErrorType::StringQuotesNotFound));
 
+        let set_query = parse_set("key \"not\"allowed\"",&DatabaseType::Str);
+        assert_eq!(set_query, parser_error!(ParserErrorType::UnescapedDoubleQuote));
+
+        let set_query = parse_set("\"\" \"value but empty key\"",&DatabaseType::Str);
+        assert_eq!(set_query, parser_error!(ParserErrorType::UnexpectedCharacter));
+
         let database_type: DatabaseType = DatabaseType::Float;
-        let set_query = parse_set("MANY key notAFloat", &database_type);   
+        let set_query = parse_set("MANY key notAFloat", &database_type);
         assert_eq!(set_query, parser_error!(ParserErrorType::WrongValueType(database_type.to_string())));
+
+        
+
+
     }
 
     #[test]
@@ -607,6 +630,13 @@ mod tests {
 
         let split_string: Vec<&str> = split_at_delimiter("CASP/OK/AUTH/\n", '/');
         assert_eq!(split_string, vec!["CASP", "OK", "AUTH", "\n"]);
+
+        let split_string: Vec<&str> = split_at_delimiter("CASP/OK/GET/STR/\"oh/no\"/\n", '/');
+        assert_eq!(split_string, vec!["CASP", "OK", "GET", "STR", "\"oh/no\"", "\n"]);
+
+        /*let string = "CASP/OK/GET/INT/key \"val ue\"/\n".replace("\"", "\\\"");
+        let split_string: Vec<String> = split_at_delimiter(&string, ' ').into_iter().map(|p| p.replace("\\\"", "\"")).collect();
+        assert_eq!(split_string, vec!["CASP/OK/GET/INT/key", "key \"val ue\"", "\n"]);*/
 
         let split_string: Vec<&str> = split_at_delimiter("no dash", '-');
         assert_eq!(split_string, vec!["no dash"]);

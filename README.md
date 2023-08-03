@@ -102,7 +102,7 @@ Keys can consist of any characters expect spaces (" "), commata (",") or forward
 Supported types are:
 | type | description |
 |:-------|:----------|
-| **STR** | Simple string (must be encapsulated with ``"``). |
+| **STR** | Simple string (must be encapsulated with ``"`` and double quotes inside must me escaped like this: ``\"``). |
 | **INT** | 32 bit signed integer. |
 | **FLOAT** | 32 bit float. |
 | **BOOL** | Either ``true`` or ``false``. |

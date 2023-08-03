@@ -14,7 +14,7 @@ Each request and response starts with the prefix ``CASP`` and ends with a ``\n``
 #### Structure:
 | prefix | delimiter | message | delimiter |suffix |
 |:-------:|:-------:|:-------:|:-------:|:-------:|
-| CASP | / | *command* | / | /\n |
+| CASP | / | *command* | / | \n |
 
 #### Examples:
 - ``CASP/AUTH password/\n``

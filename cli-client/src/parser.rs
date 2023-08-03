@@ -28,21 +28,23 @@ fn split_at_delimiter(string: &str, delimiter: char) -> Vec<&str> {
     let mut parts: Vec<&str> = Vec::new();
     let mut current_part = 0;
     let mut inside_quotes = false;
+    let mut prev_char: Option<char> = None;
 
     for (index, ch) in string.char_indices() {
         match ch {
             '"' => {
-                inside_quotes = !inside_quotes;
+                if prev_char != Some('\\') {
+                    inside_quotes = !inside_quotes;
+                }
             }
             ch if ch == delimiter && !inside_quotes => {
                 let part = &string[current_part..index];
-
-                // trim whitespace but keep '\n'
                 parts.push(part.trim_matches(|c| c == ' '));
                 current_part = index + ch.len_utf8();
             }
             _ => {}
         }
+        prev_char = Some(ch);
     }
 
     let part = &string[current_part..];
@@ -60,9 +62,11 @@ pub fn parse_response(response: &str) -> Result<ParsedResponse, String> {
     const WARN_IDENTIFIER: &str = "WARN";
     const ERROR_IDENTIFIER: &str = "ERROR";
 
-
     // split response parts at delimiter "/"
-    let response_parts: Vec<&str> = split_at_delimiter(response, '/');
+    
+
+    // this doesnt work...
+    let response_parts: Vec<&str> = split_at_delimiter(&response, '/');
 
     if response_parts.len() == 1 && response_parts[0] == "" {
         return Err("Failed to parse response: Received empty response.".to_string());
@@ -85,6 +89,9 @@ pub fn parse_response(response: &str) -> Result<ParsedResponse, String> {
                 if response_parts.len() != 6 {
                     return Err(r#"Failed to parse response: Expected GET OK responses to consist of six parts (CASP + OK + <command> + <type> + <value> + \n)."#.to_string());
                 }
+
+                //let escaped_response = response_parts[4].replace("\"", "\\\"").to_string().replace("\\\"", "\"");
+
 
                 Ok(ParsedResponse {
                     status: ResponseStatus::OK,
@@ -153,16 +160,30 @@ mod tests {
 
     #[test]
     fn test_split_slash_delimiter() {
-        let split_string: Vec<&str> = split_at_delimiter("CASP/OK/GET/INT/key \"value/1\"/\n", '/');
+
+        let split_string: Vec<&str> = split_at_delimiter("CASP/OK/GET/STR/\"oh/no\"/\n", '/');
+        assert_eq!(split_string, vec!["CASP", "OK", "GET", "STR", "\"oh/no\"", "\n"]);
+
+        let split_string: Vec<&str> = split_at_delimiter("\"\"", '/');
+        assert_eq!(split_string, vec!["\"\""]);
+
+        let string = "CASP/OK/GET/INT/key \"value/1\"/\n";
+        let split_string: Vec<&str> = split_at_delimiter(&string, '/');
         assert_eq!(split_string, vec!["CASP", "OK", "GET", "INT", "key \"value/1\"", "\n"]);
 
-        let split_string: Vec<&str> = split_at_delimiter("\"A/B/C//D\"", '/');
+        let string = "\"A/B/C//D\"";
+        let split_string: Vec<&str> = split_at_delimiter(&string, '/');
         assert_eq!(split_string, vec!["\"A/B/C//D\""]);
+
+        let string = "CASP/OK/GET/STR/\"sdf\\\"sdf\"/\n";
+        let split_string: Vec<&str> = split_at_delimiter(&string, '/');
+        assert_eq!(split_string, vec!["CASP", "OK", "GET", "STR", "\"sdf\\\"sdf\"", "\n"]); 
     }
 
     #[test]
     fn test_parse_response() {
         // test success cases
+        
         let parsed_response = parse_response("CASP/OK/SET/\n");
         assert_eq!(parsed_response, Ok(ParsedResponse { status: ResponseStatus::OK, command: Some("SET".to_string()), value: None }));
 

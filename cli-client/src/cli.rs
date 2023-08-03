@@ -127,6 +127,7 @@ pub fn print_help() {
         ("DEL RANGE <lower key> <upper key>", "Deletes values in a range of keys."),
         ("EXISTS <key>", "Checks if a key exists or not."),
         ("LEN", "Returns the amount of entries in the database."),
+        ("CLEAR", "Deletes all entries in the database."),
         ("SHUTDOWN", "Shuts down the server."),
     ];
 

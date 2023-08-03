@@ -11,7 +11,8 @@ pub enum ParserErrorType {
     WrongValueType(String),
     WrongAuthentication,
     StringQuotesNotFound,
-    UnexpectedParameters(String)
+    UnexpectedParameters(String),
+    UnescapedDoubleQuote
 }
 
 #[derive(Debug)]
@@ -34,6 +35,7 @@ impl fmt::Display for ParserError {
             ParserErrorType::WrongAuthentication => write!(f, "'wrongAuthentication': Couldn't read password. Expected: 'AUTH <password>'."),
             ParserErrorType::StringQuotesNotFound => write!(f, "'stringQuotesNotFound': Expected double quotes around strings."),
             ParserErrorType::UnexpectedParameters(parameters) => write!(f, "'unexpectedParameters': The command '{}' doesn't take any parameters.", parameters),
+            ParserErrorType::UnescapedDoubleQuote => write!(f, "'unescapedDoubleQuote': Double must be escaped."),
         }
     }
 }
