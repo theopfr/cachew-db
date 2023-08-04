@@ -1,0 +1,25 @@
+name: CI cachew server
+
+on:
+  push:
+    paths: [ cachew/** ]
+    branches: [ "main" ]
+
+  pull_request:
+    paths: [ cachew/** ]
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Build
+      run: cd ./cachew && cargo build --verbose
+    - name: Run tests
+      run: cd ./cachew && cargo test --verbose

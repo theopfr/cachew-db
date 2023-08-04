@@ -1,9 +1,11 @@
-name: CI
+name: CI cli-client
 
 on:
   push:
+    paths: [ cli-client/** ]
     branches: [ "main" ]
   pull_request:
+    paths: [ cli-client/** ]
     branches: [ "main" ]
 
 env:
@@ -17,6 +19,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cd ./cachew && cargo build --verbose
+      run: cd ./cli-client && cargo build --verbose
     - name: Run tests
-      run: cd ./cachew && cargo test --verbose
+      run: cd ./cli-client && cargo test --verbose
