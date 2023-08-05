@@ -29,7 +29,7 @@ To start the CachewDB server you have to run ``cargo run`` or the binary ``./tar
 
 | flag | short | description | ENV |
 |:-------|:----------|:----------|:----------|
-| --db-type | -d | Sets the data type (check possible types in the "Types" section). | CACHEW_DB_TYPE |
+| --db-type | -t | Sets the data type (check possible types in the "Types" section). | CACHEW_DB_TYPE |
 | --password | -p | Sets the password for the database (must have at least: 1 upper-, 1 lowercase letter, 1 special char., >= 8 chars.). | CACHEW_DB_PASSWORD |
 | --host | n/a | The host address the server will be running on (optional, default: ``127.0.0.1``). | CACHEW_DB_HOST |
 | --db-type | n/a | The port the server will be accessible on (optional, default: ``8080``). | CACHEW_DB_PORT |
@@ -106,7 +106,7 @@ Supported types are:
 | **INT** | 32 bit signed integer. |
 | **FLOAT** | 32 bit float. |
 | **BOOL** | Either ``true`` or ``false``. |
-| **JSON** | Behaves the same as strings (must be encapsulated with ``"``). |
+| **JSON** | Behaves the same as strings (must be encapsulated with ``"`` and double quotes inside must me escaped like this: ``\"``). |
 
 ---
 

@@ -62,24 +62,35 @@ fn parse_many_keys(query_keys: &str) -> Result<Vec<&str>, String> {
 fn validate_key(key: &str) -> Result<&str, String> {
     let forbidden_cars: [char; 2] = [',', '/'];
 
-    if key.chars().any(|c| forbidden_cars.contains(&c)) {
-        return parser_error!(ParserErrorType::UnexpectedCharacter);
-    }
-
-    if key.starts_with('"') && key.ends_with('"') {
-        let string_key = key.strip_prefix('"').unwrap_or(key).strip_suffix('"').unwrap_or(key);
-        if string_key.is_empty() {
-            return parser_error!(ParserErrorType::UnexpectedCharacter);
-        }
-
-        return Ok(string_key)
-    }
-
+    // check if the key consists of multiple entities, ie. there is a spaces in the key but the key is not within quotes
     if split_at_delimiter(key, ' ').len() > 1 {
+        println!("{:?}", split_at_delimiter(key, ' '));
         return parser_error!(ParserErrorType::UnexpectedCharacter);
     }
 
-    Ok(key)
+    // remove quotes if there are any
+    let mut key_norm: &str = key;
+    if key.starts_with('"') && key.ends_with('"') {
+        key_norm = key.strip_prefix('"').unwrap_or(key).strip_suffix('"').unwrap_or(key);
+    }
+    // if there aren't any quotes, check if the key contains illegal characters
+    else if key.chars().any(|c| forbidden_cars.contains(&c)) {
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
+    }
+
+    // check if the key is empty
+    if key_norm.is_empty() {
+        return parser_error!(ParserErrorType::UnexpectedCharacter);
+    }
+
+    // check for unescaped double quotes
+    let escaped_quote_pattern = r#"(^|[^\\])""#;
+    let re = Regex::new(escaped_quote_pattern).unwrap();
+    if re.is_match(key_norm) {
+        return parser_error!(ParserErrorType::UnescapedDoubleQuote);
+    }
+
+    Ok(key_norm)
 }
 
 
@@ -191,6 +202,7 @@ fn parse_set_value(value_query_parameter: &str, database_type: &DatabaseType) ->
 
             let value = value_query_parameter.strip_prefix('"').unwrap().strip_suffix('"').unwrap();
 
+            // check for unescaped double quotes
             let escaped_quote_pattern = r#"([^\\])""#;
             let re = Regex::new(escaped_quote_pattern).unwrap();
             if re.is_match(value) {
@@ -372,21 +384,45 @@ mod tests {
     // Unit tests for the `parse_get` function:
 
     #[test]
+    fn test_validate_key() {
+        let key = validate_key("\"key,/ one\"");
+        assert_eq!(key, Ok("key,/ one"));
+
+        let key = validate_key("my\\\"key");
+        assert_eq!(key, Ok("my\\\"key"));
+
+        let key = validate_key("my,key");
+        assert_eq!(key, parser_error!(ParserErrorType::UnexpectedCharacter));
+
+        let key = validate_key("\"key\"key\"key\"");
+        assert_eq!(key, parser_error!(ParserErrorType::UnescapedDoubleQuote));
+
+        let key = validate_key("\"key");
+        assert_eq!(key, parser_error!(ParserErrorType::UnescapedDoubleQuote));
+
+        let key = validate_key("key\"");
+        assert_eq!(key, parser_error!(ParserErrorType::UnescapedDoubleQuote));
+    }
+
+    #[test]
     fn test_parse_get() {
         let get_query = parse_get("key");
         assert_eq!(get_query, Ok(QueryRequest::GET("key".to_string())));
 
-        let get_query = parse_get("\"key one\"");
-        assert_eq!(get_query, Ok(QueryRequest::GET("key one".to_string())));
+        let get_query = parse_get("\"key 1\"");
+        assert_eq!(get_query, Ok(QueryRequest::GET("key 1".to_string())));
 
         let get_query = parse_get("key0 key1");
-        assert_eq!(get_query, parser_error!(ParserErrorType::UnexpectedCharacter))
+        assert_eq!(get_query, parser_error!(ParserErrorType::UnexpectedCharacter));
     }
 
     #[test]
     fn test_parse_get_range() {
         let get_range_query = parse_get("RANGE key0 key1");
         assert_eq!(get_range_query, Ok(QueryRequest::GET_RANGE { key_lower: "key0".to_string(), key_upper: "key1".to_string() }));
+
+        let get_range_query = parse_get("RANGE \"key / 1\" \"key / 2\"");
+        assert_eq!(get_range_query, Ok(QueryRequest::GET_RANGE { key_lower: "key / 1".to_string(), key_upper: "key / 2".to_string() }));
 
         let get_range_query = parse_get("RANGE key0");
         assert_eq!(get_range_query, parser_error!(ParserErrorType::InvalidRange(1)));
@@ -396,6 +432,9 @@ mod tests {
     fn test_parse_get_many() {
         let get_query = parse_get("MANY key0 key1 key2");
         assert_eq!(get_query, Ok(QueryRequest::GET_MANY(vec!["key0", "key1", "key2"])));
+
+        let get_query = parse_get("MANY \"key,1\" \"key 2\" \"key/3\" \"key \\\"4\\\"\"");
+        assert_eq!(get_query, Ok(QueryRequest::GET_MANY(vec!["key,1", "key 2", "key/3", "key \\\"4\\\""])));
     }
 
     // Unit tests for the `parse_ranged_keys` function:
@@ -484,6 +523,9 @@ mod tests {
 
         let set_query = parse_set("key \"val0\" \"val1\"", &DatabaseType::Str);
         assert_eq!(set_query, parser_error!(ParserErrorType::InvalidKeyValuePair(3)));
+
+        let set_query = parse_set("key \"val\"ue\"", &DatabaseType::Json);
+        assert_eq!(set_query, parser_error!(ParserErrorType::UnescapedDoubleQuote));
 
         let set_query = parse_set("key value", &DatabaseType::Str);
         assert_eq!(set_query, parser_error!(ParserErrorType::StringQuotesNotFound));
