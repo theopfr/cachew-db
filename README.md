@@ -7,7 +7,7 @@
 ###### ⚠️ CachewDB is still in development!
 
 ### :memo: Features:
-- cached / in-memory, non-persistant -> therefore fast
+- cached / in-memory, non-persistant
 - uses a b-tree map to store data ordered by keys
 - same type for all database values
 - simple password authentication
@@ -94,7 +94,23 @@ cargo run --release -- --host 127.0.0.1 --port 8080 --password Password123#
 ---
 
 ### :memo: Keys:
-Keys can consist of any characters expect spaces (" "), commata (",") or forward slashes ("/"). Though, you can use spaces if the key is encapsulated by quotes. For example ``?939__.`` and ``"key one"`` are a valid keys, ``my,key``, ``"my,key"`` and ``"my/key"`` are not.
+A key can consist of every character with two exepctions:
+1. If a key should contain a space, comma (``,``) or slash (``/``) it must be encapsuled by quotes (``"``).
+2. If a key should contain quotes, the quotes must be escaped by adding a backslash before them (``\"``).
+
+These restrictions exist to make parsing requests and responses easier.
+
+##### Examples of valid keys:
+- ``id5ffh26a``
+- ``?9%39__``
+- ``"my key / 1,2"``
+- ``id\"5ffh26a\"``
+
+##### Examples of invalid keys:
+- ``id 5ffh26a``
+- ``id/5ffh26a``
+- ``id "5ffh26a"``
+- ``id,5ffh26a``
 
 ---
 
