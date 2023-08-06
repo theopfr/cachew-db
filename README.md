@@ -109,7 +109,7 @@ These restrictions exist to make parsing requests and responses easier.
 ##### Examples of invalid keys:
 - ``id 5ffh26a``
 - ``id/5ffh26a``
-- ``id "5ffh26a"``
+- ``id"5ffh26a"``
 - ``id,5ffh26a``
 
 ---
