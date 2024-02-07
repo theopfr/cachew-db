@@ -1,10 +1,13 @@
 
+[![CI cachew server](https://github.com/theopfr/cachew-db/actions/workflows/ci_server.yml/badge.svg)](https://github.com/theopfr/cachew-db/actions/workflows/ci_server.yml)
+&nbsp;&nbsp;&nbsp;
+[![CI cli-client](https://github.com/theopfr/cachew-db/actions/workflows/ci_cli_client.yml/badge.svg)](https://github.com/theopfr/cachew-db/actions/workflows/ci_cli_client.yml)
+
 <p align="center" width="100%" backround-color="red">
     <img src="./images/cachew-logo.png" width="500">
 </p>
 
 ## A light weight, typed, in-memory, ordered, key-value database.
-###### ⚠️ CachewDB is still in development!
 
 ### :memo: Features:
 - cached / in-memory, non-persistant
